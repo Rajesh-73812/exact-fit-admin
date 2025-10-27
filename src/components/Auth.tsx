@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription,} from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
-import { Car, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import apiClient from "@/lib/apiClient";
 import Image from "next/image";
@@ -53,13 +53,14 @@ export const AuthPage = () => {
 
   return (
     <div className="flex h-screen">
-      <div className="w-1/2 bg-primary flex items-center justify-center">
+      <div className="hidden lg:w-1/2 bg-primary lg:flex items-center justify-center">
         <Image src={logoname} alt="Logo" className="" />
       </div>
-      <div className="w-1/2 flex items-center justify-center">
+
+      <div className="w-full lg:w-1/2 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            
+
             <CardTitle className="text-2xl">Exact Fit Admin</CardTitle>
             <CardDescription>Enter your email below to login to your account</CardDescription>
           </CardHeader>
@@ -91,6 +92,7 @@ export const AuthPage = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
+
                   <button
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
@@ -102,6 +104,15 @@ export const AuthPage = () => {
                       <Eye className="w-5 h-5" />
                     )}
                   </button>
+                </div>
+
+                <div className="grid gap-3 ">
+                  <a
+                    href="/forgotpassword"
+                    className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+                  >
+                    Forgot  password?
+                  </a>
                 </div>
               </div>
               {error && <p className="text-red-500 text-sm">{error}</p>}
