@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink,  BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator} from "@/components/ui/breadcrumb";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
 import { DataTable } from "../../../components/tables/data-table";
@@ -34,86 +34,153 @@ export default function DashboardPage() {
 
       {/* Three Key Stats Cards Below - Compact & Premium */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-        {/* Revenue Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex flex-col gap-2 border-t-2 border-gradient-to-r from-[#8000FF] to-[#DE00FF] hover:shadow-lg transition min-h-[120px]">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="bg-gradient-to-br from-[#8000FF] to-[#DE00FF] p-2 rounded-full text-white">
-              <BadgeDollarSign size={20} />
-            </div>
-            <div>
-              <div className="text-lg font-semibold">
-                <CountUp end={120500} duration={2.5} separator="," prefix="₹" />
-              </div>
-              <div className="text-xs text-green-500 flex items-center gap-1">
-                <TrendingUp size={12} /> +15% this month
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>Sales: ₹120,500</span>
-            <span>Cost: ₹80,000</span>
-            <span>Profit: ₹40,500</span>
-          </div>
-          <div className="flex justify-between text-xs text-gray-400 mt-1">
-            <span>Margin: 33.6%</span>
-            <span>Orders: 8,210</span>
-          </div>
-        </div>
-        {/* City Coverage Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex flex-col gap-2 border-t-2 border-gradient-to-r from-[#43c6ac] to-[#f8ffae] hover:shadow-lg transition min-h-[120px]">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="bg-gradient-to-br from-[#43c6ac] to-[#f8ffae] p-2 rounded-full text-white">
-              <MapPin size={20} />
-            </div>
-            <div>
-              <div className="text-lg font-semibold">
-                <CountUp end={32} duration={2} />
-              </div>
-              <div className="text-xs text-blue-500 flex items-center gap-1">
-                <TrendingUp size={12} /> +2 this month
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-between text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <CheckCircle size={12} className="text-green-500" />
-              <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded">Servicable: 28</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <AlertCircle size={12} className="text-red-500" />
-              <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded">Unservicable: 4</span>
-            </span>
-          </div>
-        </div>
 
         {/* Customer Status Card */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex flex-col gap-2 border-t-2 border-gradient-to-r from-[#f7971e] to-[#ffd200] hover:shadow-lg transition min-h-[120px]">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="bg-gradient-to-br from-[#f7971e] to-[#ffd200] p-2 rounded-full text-white">
-              <Users size={20} />
-            </div>
-            <div>
-              <div className="text-lg font-semibold">
-                <CountUp end={15200} duration={2.5} separator="," />
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="cursor-pointer bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex flex-col gap-2 border-t-2 border-gradient-to-r from-[#f7971e] to-[#ffd200] hover:shadow-lg transition min-h-[120px]">
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className="p-2 rounded-full text-white"
+                    style={{ background: "linear-gradient(90deg, #f7971e 0%, #ffd200 100%)" }}
+                  >
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold">
+                      <CountUp end={15200} duration={2.5} separator="," />
+                    </div>
+                    <div className="text-xs text-green-500 flex items-center gap-1">
+                      <TrendingUp size={12} /> +320 this month
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active/Inactive */}
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle size={12} className="text-green-500" />
+                    <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded">
+                      Active: 12,000
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <AlertCircle size={12} className="text-red-500" />
+                    <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded">
+                      Inactive: 3,200
+                    </span>
+                  </span>
+                </div>
+
+                {/* Footer */}
+                <div className="text-xs font-semibold text-gray-500 mt-2 text-center py-1 border-[1px] border-[#f0f0f0]">
+                  <p>CUSTOMERS</p>
+                </div>
               </div>
-              <div className="text-xs text-green-500 flex items-center gap-1">
-                <TrendingUp size={12} /> +320 active
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Customer Growth & Status</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Technician Card */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="cursor-pointer bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex flex-col gap-2 border-t-2 border-gradient-to-r from-[#43c6ac] to-[#f8ffae] hover:shadow-lg transition min-h-[120px]">
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className="p-2 rounded-full text-white"
+                    style={{ background: "linear-gradient(90deg, #43c6ac 0%, #f8ffae 100%)" }}
+                  >
+                    <Users size={20} />
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold">
+                      <CountUp end={32} duration={2} />
+                    </div>
+                    <div className="text-xs text-green-500 flex items-center gap-1">
+                      <TrendingUp size={12} /> +2 this month
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active/Inactive */}
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle size={12} className="text-green-500" />
+                    <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded">
+                      Active: 28
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <AlertCircle size={12} className="text-red-500" />
+                    <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded">
+                      InActive: 4
+                    </span>
+                  </span>
+                </div>
+
+                {/* Footer */}
+                <div className="text-xs font-semibold text-gray-500 mt-2 text-center py-1 border-[1px] border-[#f0f0f0]">
+                  <p>TECHNICIANS</p>
+                </div>
               </div>
-              <div className="text-lg font-semibold">15,200</div>
-              <div className="text-xs text-green-500 flex items-center gap-1"><TrendingUp size={12} /> +320 this mont</div>
-            </div>
-          </div>
-          <div className="flex justify-between text-xs text-gray-500">
-            <span className="flex items-center gap-1">
-              <CheckCircle size={12} className="text-green-500" />
-              <span className="bg-green-50 text-green-700 px-2 py-0.5 rounded">Active: 12,000</span>
-            </span>
-            <span className="flex items-center gap-1">
-              <AlertCircle size={12} className="text-red-500" />
-              <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded">Inactive: 3,200</span>
-            </span>
-          </div>
-        </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Technician Growth & Status</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
+        {/* Revenue Card */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="cursor-pointer bg-white dark:bg-gray-900 rounded-xl shadow p-4 flex flex-col gap-2 border-t-2 border-gradient-to-r from-[#8000FF] to-[#DE00FF] hover:shadow-lg transition min-h-[120px]">
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-1">
+                  <div
+                    className="p-2 rounded-full text-white"
+                    style={{ background: "linear-gradient(90deg, #8000FF 0%, #DE00FF 100%)" }}
+                  >
+                    <BadgeDollarSign size={20} />
+                  </div>
+                  <div>
+                    <div className="text-lg font-semibold">
+                      <CountUp end={120500} duration={2.5} separator="," prefix="₹" />
+                    </div>
+                    <div className="text-xs text-green-500 flex that items-center gap-1">
+                      <TrendingUp size={12} /> +15% this month
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details */}
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Sales: ₹120,500</span>
+                  <span>Orders: 8,210</span>
+                </div>
+                {/* <div className="flex justify-between text-xs text-gray-400 mt-1">
+                  <span>Margin: 33.6%</span>
+                  <span>Orders: 8,210</span>
+                </div> */}
+
+                {/* Footer */}
+                <div className="text-xs font-semibold text-gray-500 mt-2 text-center py-1 border-[1px] border-[#f0f0f0]">
+                  <p>REVENUE</p>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">
+              <p>Revenue, Sales & Order Summary</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Product Category Card - Compact */}
@@ -152,7 +219,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue by Product Section */}
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
-          <h2 className="text-base font-semibold mb-3 flex items-center gap-2 text-[#8000FF]"><ShoppingCart size={16} /> Revenue by Product</h2>
+          <h2 className="text-base font-semibold mb-3 flex items-center gap-2 text-[#8000FF]"><ShoppingCart size={16} /> Revenue By Product</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full rounded-lg overflow-hidden shadow border-separate border-spacing-y-1 text-sm">
               <thead className="bg-gradient-to-r from-[#8000FF]/10 to-[#DE00FF]/10">
@@ -183,7 +250,7 @@ export default function DashboardPage() {
         </div>
         {/* Revenue by City Section */}
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
-          <h2 className="text-base font-semibold mb-3 flex items-center gap-2 text-[#43c6ac]"><MapPin size={16} /> Revenue by City</h2>
+          <h2 className="text-base font-semibold mb-3 flex items-center gap-2 text-[#43c6ac]"><MapPin size={16} /> Revenue By Area</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full rounded-lg overflow-hidden shadow border-separate border-spacing-y-1 text-sm">
               <thead className="bg-gradient-to-r from-[#43c6ac]/10 to-[#f8ffae]/10">
@@ -247,7 +314,6 @@ export default function DashboardPage() {
 
       {/* Divider */}
       <div className="my-10 border-t border-gray-200 dark:border-gray-700" />
-
 
       {/* Chart Section (Placeholder) */}
       <div className="mt-10 bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
@@ -333,47 +399,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Activity Timeline */}
-      <div className="mt-10">
-  <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
-  <ul className="border-l-2 border-gray-200 dark:border-gray-700 pl-2">
-    {[
-      "User1 placed an order",
-      "User2 signed up",
-      "User3 upgraded plan",
-      "User4 left a review",
-      "User5 requested support",
-    ].map((activity, idx) => (
-      <li key={idx} className="mb-6 relative flex items-start">
-        <span className="absolute -left-4 top-1.5 w-3 h-3 bg-gradient-to-b from-[#8000FF] to-[#DE00FF] rounded-full"></span>
-        <div className="flex flex-col">
-          <div className="text-sm leading-5">{activity}</div>
-          <div className="text-xs text-gray-400">{new Date(Date.now() - idx * 3600 * 1000).toLocaleString()}</div>
-        </div>
-      </li>
-    ))}
-  </ul>
-</div>
-
-      {/* Social Source Stats */}
-      <div className="mt-10">
-        <h2 className="text-lg font-semibold mb-4">Social Source</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 flex flex-col items-center">
-            <span className="text-blue-600 font-bold text-2xl">125</span>
-            <span className="text-gray-500">Facebook Sales</span>
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 flex flex-col items-center">
-            <span className="text-blue-400 font-bold text-2xl">112</span>
-            <span className="text-gray-500">Twitter Sales</span>
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 flex flex-col items-center">
-            <span className="text-pink-500 font-bold text-2xl">104</span>
-            <span className="text-gray-500">Instagram Sales</span>
-          </div>
-        </div>
-      </div>
-
       {/* Latest Transactions Table */}
       <div className="mt-10">
         <h2 className="text-lg font-semibold mb-4">Latest Transactions</h2>
@@ -384,12 +409,12 @@ export default function DashboardPage() {
           <table className="min-w-full bg-white dark:bg-gray-900 rounded-lg shadow">
             <thead>
               <tr>
-                <th className="px-4 py-2">Order ID</th>
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Date</th>
-                <th className="px-4 py-2">Total</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Method</th>
+                <th className="px-4 py-2 text-left">Order ID</th>
+                <th className="px-4 py-2 text-left">Name</th>
+                <th className="px-4 py-2 text-left">Date</th>
+                <th className="px-4 py-2 text-left">Total</th>
+                <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 text-left">Method</th>
               </tr>
             </thead>
             <tbody>
@@ -415,8 +440,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Promo/Placeholder Card */}
-      
     </ContentLayout>
   );
 }
