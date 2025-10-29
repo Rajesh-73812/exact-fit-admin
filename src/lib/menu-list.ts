@@ -36,13 +36,13 @@ export function getMenuList(pathname: string): Group[] {
       groupLabel: "Catlog",
       menus: [
         {
-          href: "/categories/list",
+          href: "/category",
           label: "Categories",
           icon: Bookmark
         },
         {
 
-          href: "/subcategories/list",
+          href: "/subcategories",
           label: "Sub Categories",
           icon: BookmarkMinus
         },
