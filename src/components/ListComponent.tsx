@@ -331,7 +331,8 @@ export default function ListComponent({
                             checked={
                               item[statusField] === true ||
                               item[statusField] === 1 ||
-                              item[statusField] === '1'
+                              item[statusField] === '1' ||
+                              item[statusField] === 'active'
                             }
                             onCheckedChange={() =>
                               onStatusToggle?.(

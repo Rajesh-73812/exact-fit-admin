@@ -3,12 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import {
-  TrendingUp,
-  IndianRupee,
-  Package,
-  Image as ImageIcon,
-} from 'lucide-react';
+import { TrendingUp, IndianRupee, Package, Image as ImageIcon,} from 'lucide-react';
 import ListComponent from '@/components/ListComponent';
 import Loader from '@/components/utils/Loader';
 import CustomModal from '@/components/CustomModal';
@@ -17,10 +12,10 @@ import { ContentLayout } from '@/components/admin-panel/content-layout';
 
 interface Category {
   _id: string;
-  name: string;
-  description: string;
+  title: string;
   status: 'active' | 'inactive';
-  image?: string;
+  image_url?: string;
+  image_alt?: string;
   createdAt: string;
   productsCount?: number;
   totalEarnings?: number;
@@ -60,7 +55,7 @@ export default function CategoriesPage() {
   const fetchAnalytics = async () => {
     setAnalyticsLoading(true);
     try {
-      const { data } = await apiClient.get('/v1/catagory/get-analytics');
+      const { data } = await apiClient.get('/category/V1/get-all-category');
       setAnalytics({
         product: data.TotalProduct || 0,
         Earning: data.TotalEarning || 0,
@@ -77,17 +72,19 @@ export default function CategoriesPage() {
   const fetchCategories = async () => {
     setIsLoading(true);
     try {
-      const { data } = await apiClient.get('/v1/catagory/get-all-catagory', {
+      const { data } = await apiClient.get('/category/V1/get-all-category', {
         params: { page, limit: 10, search: searchQuery || undefined },
       });
 
+      console.log(data,"from category data")
       const items = data.data || [];
+      console.log(items,"itemsssssss from category")
       const transformed: Category[] = items.map((cat: any) => ({
         _id: cat._id || '',
-        name: cat.name || '',
-        description: cat.description || '',
-        status: cat.status || 'inactive',
-        image: cat.image || '',
+        title: cat.title || '',
+        status: cat.status === 'active' ? 'active' : 'inactive',
+        image_url: cat.image_url || '',
+        image_alt: cat.image_alt || '',
         createdAt: cat.createdAt || new Date().toISOString(),
         productsCount: cat.productsCount || 0,
         totalEarnings: cat.totalEarnings || 0,
@@ -131,11 +128,11 @@ export default function CategoriesPage() {
       key: 'image',
       header: 'Image',
       render: (item: Category) =>
-        item.image ? (
+        item.image_url ? (
           <div className="relative h-10 w-10 rounded-md overflow-hidden">
             <Image
-              src={item.image}
-              alt={item.name}
+              src={item.image_url}
+              alt={item.image_alt}
               fill
               loading="lazy"
               className="object-cover"
@@ -155,11 +152,10 @@ export default function CategoriesPage() {
           onClick={() => router.push(`/categories/${item._id}`)}
           className="font-semibold hover:text-violet-600 transition-colors"
         >
-          {item.name}
+          {item.title}
         </button>
       ),
     },
-    { key: 'description', header: 'Description' },
     {
       key: 'productsCount',
       header: 'Total Products',
@@ -169,11 +165,6 @@ export default function CategoriesPage() {
       key: 'totalEarnings',
       header: 'Total Earnings',
       render: (item: Category) => <span className="text-center">₹{item.totalEarnings}</span>,
-    },
-    {
-      key: 'createdAt',
-      header: 'Created Date',
-      render: (item: Category) => new Date(item.createdAt).toLocaleDateString(),
     },
   ];
 

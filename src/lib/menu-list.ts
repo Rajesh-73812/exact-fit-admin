@@ -36,7 +36,7 @@ export function getMenuList(pathname: string): Group[] {
       groupLabel: "Catlog",
       menus: [
         {
-          href: "/category",
+          href: "/categories",
           label: "Categories",
           icon: Bookmark
         },
