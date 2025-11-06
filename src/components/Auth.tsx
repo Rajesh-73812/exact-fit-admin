@@ -9,8 +9,8 @@ import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import apiClient from "@/lib/apiClient";
 import Image from "next/image";
+// import logoname from "../../public/logo.png";
 import logoname from "../../public/Frame 1984080200.png";
-// import logo from "../../public/Frame 1984080200.png";
 
 export const AuthPage = () => {
   const [email, setEmail] = useState("exact.fit.admin@gmail.com");
@@ -30,17 +30,18 @@ export const AuthPage = () => {
     setError("");
 
     try {
-      const response = await apiClient.post("/v1/admin/auth/login", { email, password, });
-      const data = response.data;
+      const response = await apiClient.post("/auth/V1/login", { email, password, });
+      // const data = response.data;
+      // console.log(data,"from login")
+      // const user = {
+      //   id: data.id,
+      //   name: data.name,
+      //   email: data.email,
+      //   role: data.role,
+      // };
 
-      const user = {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-      };
-
-      localStorage.setItem("token", data.token);
+      console.log(response.data.data?.token,"from token")
+      localStorage.setItem("token", response.data.data?.token);
       console.log("Token stored:", localStorage.getItem("token"));
       router.push("/dashboard");
     } catch (err: any) {
