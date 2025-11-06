@@ -43,7 +43,8 @@ function StatCard({
 }
 
 export default function CategoryDetailsPage() {
-    const params = useParams();
+    const { slug } = useParams();
+    console.log(slug, "slug");
     const router = useRouter()
     const [category, setCategory] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -51,11 +52,13 @@ export default function CategoryDetailsPage() {
 
     // Fetch category data
     useEffect(() => {
+        if (!slug) return;
         setLoading(true)
         const fetchCategory = async () => {
             try {
-                const res = await apiClient.get(`/v1/catagory/get-seo-catagory-by-id/${params.id}`);
-                setCategory(res.data.data[0]); // Access the first item in the data array
+                const res = await apiClient.get(`/category/V1/get-category-by-slug/${slug}`);
+                console.log(res.data, "response");
+                setCategory(res.data.data);  // Access the first item in the data array
             } catch (error) {
                 console.error('Failed to fetch category:', error);
                 setError('Failed to load category data. Please try again later.');
@@ -64,10 +67,9 @@ export default function CategoryDetailsPage() {
             }
         };
 
-        if (params.id) {
-            fetchCategory();
-        }
-    }, [params.id]);
+        fetchCategory();
+
+    }, [slug]);
 
     // Placeholder sales data (since not provided in backend)
     const salesData = [
@@ -98,7 +100,19 @@ export default function CategoryDetailsPage() {
                     </CardHeader>
                     <CardContent className="flex gap-4">
                         <div className="relative h-32 w-32 rounded-xl overflow-hidden border">
-                            <Image src={category.image} alt={category.name} fill className="object-cover" />
+                            {category.image_url ? (
+                                <Image
+                                    src={category.image_url}
+                                    alt={category.image_alt || category.title || 'Category image'}
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                />
+                            ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-gray-100">
+                                    <Package className="h-12 w-12 text-gray-400" />
+                                </div>
+                            )}
                         </div>
                         <div className="space-y-2">
                             <h3 className="text-xl font-semibold">{category.name}</h3>
@@ -156,7 +170,7 @@ export default function CategoryDetailsPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <StatCard
                     title="Total Products"
                     value={category.productCount}
@@ -175,12 +189,12 @@ export default function CategoryDetailsPage() {
                     icon={<TrendingUp className="h-5 w-5" />}
                     trend="+0%"
                 />
-                <StatCard
+                {/* <StatCard
                     title="Active Subcategories"
                     value={category.subcategories.filter((sub: any) => sub.status === 'active').length}
                     icon={<Boxes className="h-5 w-5" />}
                     trend="+2%"
-                />
+                /> */}
             </div>
 
             {/* Sales Chart */}
@@ -203,47 +217,6 @@ export default function CategoryDetailsPage() {
                 </CardContent>
             </Card>
 
-            {/* Subcategories Table */}
-            <Card className="mb-6 shadow-lg">
-                <CardHeader>
-                    <CardTitle>Subcategories</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Slug</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {category.subcategories.map((subcategory: any) => (
-                                <TableRow key={subcategory._id}>
-                                    <TableCell className="font-medium">{subcategory.name}</TableCell>
-                                    <TableCell>{subcategory.slug}</TableCell>
-                                    <TableCell>{subcategory.description}</TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            className={`text-white ${subcategory.status === 'active' ? 'bg-gradient-to-b from-[#8000FF] to-[#DE00FF]' : 'bg-gray-400'}`}
-                                        >
-                                            {subcategory.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => { router.push(`/subcategories/${subcategory._id}`) }}>
-                                            View
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-
             {/* Products Table */}
             <Card className="shadow-lg">
                 <CardHeader>
@@ -260,7 +233,7 @@ export default function CategoryDetailsPage() {
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
+                        {/* <TableBody>
                             {category.products.map((product: any) => (
                                 <TableRow key={product._id}>
                                     <TableCell className="font-medium">{product.name}</TableCell>
@@ -280,7 +253,7 @@ export default function CategoryDetailsPage() {
                                     </TableCell>
                                 </TableRow>
                             ))}
-                        </TableBody>
+                        </TableBody> */}
                     </Table>
                 </CardContent>
             </Card>
