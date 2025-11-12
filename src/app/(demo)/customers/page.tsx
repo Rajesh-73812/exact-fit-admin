@@ -10,7 +10,7 @@ import { mockCustomers } from '@/data/mockCustomers';
 import { Badge } from '@/components/ui/badge';
 
 export default function CustomersPage() {
-  const router = useRouter();
+  // const router = useRouter();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
