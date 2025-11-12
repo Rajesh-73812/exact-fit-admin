@@ -191,8 +191,8 @@ export default function DashboardPage() {
               <BarChart3 size={22} />
             </div>
             <div>
-              <div className="text-base font-bold text-white">Product Categories</div>
-              <div className="text-xs text-white/80 flex items-center gap-1"><Activity size={12} /> 8 Categories, 22 Subcategories, 120 Products</div>
+              <div className="text-base font-bold text-white">Services</div>
+              <div className="text-xs text-white/80 flex items-center gap-1"><Activity size={12} /> 8 Services, 22 Sub-Services, 120 Products</div>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -216,10 +216,11 @@ export default function DashboardPage() {
       <div className="my-8 border-t border-gray-200 dark:border-gray-700" />
 
       {/* Premium Table and List Sections - Compact */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> */}
+      <div className="grid grid-cols-1 gap-6">
         {/* Revenue by Product Section */}
         <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
-          <h2 className="text-base font-semibold mb-3 flex items-center gap-2 text-[#8000FF]"><ShoppingCart size={16} /> Revenue By Product</h2>
+          <h2 className="text-base font-semibold mb-3 flex items-center gap-2 text-[#8000FF]"><ShoppingCart size={16} /> Revenue By Services</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full rounded-lg overflow-hidden shadow border-separate border-spacing-y-1 text-sm">
               <thead className="bg-gradient-to-r from-[#8000FF]/10 to-[#DE00FF]/10">
@@ -249,7 +250,7 @@ export default function DashboardPage() {
           </div>
         </div>
         {/* Revenue by City Section */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
+        {/* <div className="bg-white dark:bg-gray-900 rounded-xl shadow p-4">
           <h2 className="text-base font-semibold mb-3 flex items-center gap-2 text-[#43c6ac]"><MapPin size={16} /> Revenue By Area</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full rounded-lg overflow-hidden shadow border-separate border-spacing-y-1 text-sm">
@@ -276,16 +277,16 @@ export default function DashboardPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Divider */}
-      <div className="my-10 border-t border-gray-200 dark:border-gray-700" />
+      {/* <div className="my-10 border-t border-gray-200 dark:border-gray-700" /> */}
 
       {/* Premium Members Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-8"> */}
         {/* Active Members */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6">
+        {/* <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2 text-green-600"><CheckCircle size={20} /> Active Members</h3>
           <ul className="space-y-3">
             {[1, 2, 3].map((i) => (
@@ -296,9 +297,9 @@ export default function DashboardPage() {
               </li>
             ))}
           </ul>
-        </div>
+        </div> */}
         {/* Inactive Members */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6">
+        {/* <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6">
           <h3 className="font-semibold mb-4 flex items-center gap-2 text-red-600"><AlertCircle size={20} /> Inactive Members</h3>
           <ul className="space-y-3">
             {[1, 2].map((i) => (
@@ -309,8 +310,8 @@ export default function DashboardPage() {
               </li>
             ))}
           </ul>
-        </div>
-      </div>
+        </div> */}
+      {/* </div> */}
 
       {/* Divider */}
       <div className="my-10 border-t border-gray-200 dark:border-gray-700" />
@@ -387,12 +388,12 @@ export default function DashboardPage() {
 
       {/* Top Users Section */}
       <div className="mt-10">
-        <h2 className="text-lg font-semibold mb-4">Top Users</h2>
+        <h2 className="text-lg font-semibold mb-4">Top Technicians</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="flex flex-col items-center bg-white dark:bg-gray-900 rounded-lg shadow p-4">
               <img src={`https://randomuser.me/api/portraits/men/${i + 10}.jpg`} alt="User" className="w-12 h-12 rounded-full mb-2" />
-              <span className="font-medium">User {i}</span>
+              <span className="font-medium">Technician {i}</span>
               <span className="text-xs text-gray-500">Active</span>
             </div>
           ))}
