@@ -11,9 +11,9 @@ const apiClient: AxiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4446/api/admin",
   // baseURL: process.env.NEXT_PUBLIC_API_URL || "https://sawari-server.vercel.app/api",
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // headers: {
+  //   'Content-Type': 'application/json',
+  // },
 });
 
 apiClient.interceptors.request.use(
