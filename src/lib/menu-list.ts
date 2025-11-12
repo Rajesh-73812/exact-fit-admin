@@ -1,4 +1,4 @@
-import { Tag, Users, Settings, Bookmark, SquarePen, LayoutGrid, LucideIcon, BookmarkMinus, Box, Image } from "lucide-react";
+import { Tag, Users, Settings, Bookmark, SquarePen, LayoutGrid, LucideIcon, BookmarkMinus, Box, Image,UserCog  } from "lucide-react";
 
 type Submenu = {
   href: string;
@@ -37,25 +37,59 @@ export function getMenuList(pathname: string): Group[] {
       menus: [
         {
           href: "/categories",
-          label: "Categories",
+          label: "Services",
           icon: Bookmark
         },
         {
 
           href: "/subcategories",
-          label: "Sub Categories",
+          label: "Sub Services",
           icon: BookmarkMinus
         },
-        {
-          href: "/products/list",
-          label: "Services",
-          icon: Box
-        },
+        // {
+        //   href: "/products/list",
+        //   label: "Services",
+        //   icon: Box
+        // },
         {
           href: "/banners/list",
           label: "Banners",
           icon: Image
-        },        
+        },   
+        {
+          href: "/technicians",
+          label: "Technicians",
+          icon: UserCog
+        },  
+        {
+          href: "/customers",
+          label: "Customers",
+          icon: Users
+        }   
+      ]
+    },
+    {
+      groupLabel:"Bookings",
+      menus:[
+        {
+          href:"",
+          label:"Bookings",
+          icon:SquarePen,
+          submenus:[
+            {
+              href:"/subscription",
+              label:"Subscription"
+            },
+            {
+              href:"/emergency",
+              label:"Emergency",
+            },
+            {
+              href:"enquiry",
+              label:"Enquiry"
+            }
+          ]
+        }
       ]
     },
     {
@@ -98,11 +132,11 @@ export function getMenuList(pathname: string): Group[] {
     {
       groupLabel: "Settings",
       menus: [
-        {
-          href: "/users",
-          label: "Users",
-          icon: Users
-        },
+        // {
+        //   href: "/users",
+        //   label: "Users",
+        //   icon: Users
+        // },
         {
           href: "/account",
           label: "Account",
