@@ -36,7 +36,7 @@ const uploadImageToS3 = async (file: File): Promise<string> => {
     credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET_KEY },
   });
 
-  const fileName = `categories/${Date.now()}-${file.name.replace(/\s+/g, '-').toLowerCase()}`;
+  const fileName = `services/${Date.now()}-${file.name.replace(/\s+/g, '-').toLowerCase()}`;
 
   const command = new PutObjectCommand({
     Bucket: BUCKET,
@@ -53,7 +53,7 @@ const uploadImageToS3 = async (file: File): Promise<string> => {
 
 interface FormData {
   title: string;
-  category_slug?: string;
+  service_slug?: string;
   position: string;
   image_alt: string;
   is_active: string;
@@ -70,10 +70,10 @@ interface Errors {
   image_url?: string;
 }
 
-interface CategoryFormProps {
+interface ServiceFormProps {
   slug?: string; // Make it optional because it will only be available in edit mode
 }
-const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => { 
+const ServiceForm: React.FC<ServiceFormProps> = ({ slug }) => { 
    const router = useRouter();
   // const { slug } = useParams();               // <-- slug from URL
   const isEdit = !!slug;                      // true → edit, false → create
@@ -83,7 +83,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
   const [isImageEnlarged, setIsImageEnlarged] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     title: '',
-    category_slug: '',
+    service_slug: '',
     position: '',
     image_alt: '',
     is_active: '1',
@@ -97,15 +97,15 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
   useEffect(() => {
     if (!isEdit) return;
 
-    const fetchCategory = async () => {
+    const fetchService = async () => {
       setIsLoading(true);
       try {
-        const { data } = await apiClient.get(`/category/V1/get-category-by-slug/${slug}`);
+        const { data } = await apiClient.get(`/service/V1/get-service-by-slug/${slug}`);
         const cat = data.data;
 
         setFormData({
           title: cat.title || '',
-          category_slug: cat.category_slug || '',
+          service_slug: cat.service_slug || '',
           position: cat.position?.toString() || '',
           image_alt: cat.image_alt || '',
           is_active: cat.status === 'active' ? '1' : '0',
@@ -115,13 +115,13 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
         });
         setImagePreview(cat.image_url || null);
       } catch (err: any) {
-        console.error('Failed to load category:', err);
+        console.error('Failed to load service:', err);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchCategory();
+    fetchService();
   }, [slug, isEdit]);
 
   // ──────────────────────── SLUG GENERATOR ────────────────────────
@@ -138,7 +138,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === 'title' && !isEdit && { category_slug: generateSlug(value) }), // only auto-fill on create
+      ...(name === 'title' && !isEdit && { service_slug: generateSlug(value) }), // only auto-fill on create
     }));
     setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
@@ -199,9 +199,9 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
       }
 
       const payload = {
-        ...(isEdit && { category_slug: formData.category_slug }), // send slug on edit
+        ...(isEdit && { service_slug: formData.service_slug }), // send slug on edit
         title: formData.title,
-        ...(isEdit ? {} : { category_slug: generateSlug(formData.title) }), // auto on create
+        ...(isEdit ? {} : { service_slug: generateSlug(formData.title) }), // auto on create
         position: formData.position ? Number(formData.position) : null,
         description: formData.description,
         image_url: finalImageUrl,
@@ -210,12 +210,12 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
         external_link: '',
       };
 
-      await apiClient.post('/category/V1/upsert-category', payload, {
+      await apiClient.post('/service/V1/upsert-service', payload, {
         withCredentials: true,
         headers: { 'Content-Type': 'application/json' },
       });
 
-      router.push('/categories');
+      router.push('/services');
     } catch (err: any) {
       console.error('Save error:', err);
       if (err.response?.data?.errors) {
@@ -240,7 +240,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
 
   // ──────────────────────── RENDER ────────────────────────
   return (
-    <ContentLayout title={isEdit ? 'Edit Category' : 'Add Category'}>
+    <ContentLayout title={isEdit ? 'Edit Service' : 'Add Service'}>
       {isLoading && <Loader />}
 
       <Breadcrumb>
@@ -253,12 +253,12 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/categories" prefetch={false}>Categories</Link>
+              <Link href="/service" prefetch={false}>Services</Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{isEdit ? 'Edit Category' : 'Add Category'}</BreadcrumbPage>
+            <BreadcrumbPage>{isEdit ? 'Edit Service' : 'Add Service'}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -273,11 +273,11 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
                 <div>
                   <Label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
                     <Tag className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-                    Category Name <span className="text-red-500">*</span>
+                    Service Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     name="title"
-                    placeholder="Enter Category name"
+                    placeholder="Enter Service name"
                     value={formData.title}
                     onChange={handleInputChange}
                     required
@@ -293,9 +293,9 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
                     Slug {isEdit && '(auto-generated)'}
                   </Label>
                   <Input
-                    name="category_slug"
+                    name="service_slug"
                     placeholder="auto-generated"
-                    value={formData.category_slug}
+                    value={formData.service_slug}
                     readOnly
                     className="bg-gray-100 dark:bg-gray-700"
                   />
@@ -437,7 +437,7 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push('/categories')}
+              onClick={() => router.push('/services')}
               disabled={isLoading}
             >
               Cancel
@@ -449,4 +449,4 @@ const CategoryForm: React.FC<CategoryFormProps> = ({ slug }) => {
   );
 };
 
-export default CategoryForm;
+export default ServiceForm;

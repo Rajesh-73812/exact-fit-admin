@@ -9,9 +9,9 @@ import CustomModal from '@/components/CustomModal';
 import apiClient from '@/lib/apiClient';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
 
-interface Category {
+interface Service {
   title: string;
-  category_slug: string;
+  service_slug: string;
   position: string;
   status: 'active' | 'inactive';
   image_url?: string;
@@ -21,16 +21,16 @@ interface Category {
   totalEarnings?: number;
 }
 
-interface CategoryAnalytics {
+interface ServiceAnalytics {
   product: number;
   Earning: number;
-  activeCategoryCount: number;
-  inactiveCategoryCount: number;
+  activeServiceCount: number;
+  inactiveServiceCount: number;
 }
 
-export default function CategoriesPage() {
+export default function ServicesPage() {
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -40,28 +40,28 @@ export default function CategoriesPage() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
-  const [analytics, setAnalytics] = useState<CategoryAnalytics>({
+  const [analytics, setAnalytics] = useState<ServiceAnalytics>({
     product: 0,
     Earning: 0,
-    activeCategoryCount: 0,
-    inactiveCategoryCount: 0,
+    activeServiceCount: 0,
+    inactiveServiceCount: 0,
   });
 
   /* -------------------------------------------------- FETCH -------------------------------------------------- */
   useEffect(() => {
-    fetchCategories();
+    fetchServices();
     fetchAnalytics();
   }, [page, searchQuery]);
 
   const fetchAnalytics = async () => {
     setAnalyticsLoading(true);
     try {
-      const { data } = await apiClient.get('/category/V1/get-all-category');
+      const { data } = await apiClient.get('/service/V1/get-all-service');
       setAnalytics({
         product: data.TotalProduct || 0,
         Earning: data.TotalEarning || 0,
-        activeCategoryCount: data.activeCategoryCount || 0,
-        inactiveCategoryCount: data.inactiveCategoryCount || 0,
+        activeServiceCount: data.activeServiceCount || 0,
+        inactiveServiceCount: data.inactiveServiceCount || 0,
       });
 
       console.log(data, "dataaaaaaaaaaaaa")
@@ -72,17 +72,17 @@ export default function CategoriesPage() {
     }
   };
 
-  const fetchCategories = async () => {
+  const fetchServices = async () => {
     setIsLoading(true);
     try {
-      const { data } = await apiClient.get('/category/V1/get-all-category', {
+      const { data } = await apiClient.get('/services/V1/get-all-services', {
         params: { page, limit: 10, search: searchQuery || undefined },
       });
 
       const items = data.data || [];
-      const transformed: Category[] = items.map((cat: any) => ({
+      const transformed: Service[] = items.map((cat: any) => ({
         title: cat.title || '',
-        category_slug: cat.category_slug || '',
+        service_slug: cat.services_slug || '',
         position: cat.position?.toString() || '',
         status: cat.status === 'active' ? 'active' : 'inactive',
         image_url: cat.image_url || '',
@@ -92,10 +92,10 @@ export default function CategoriesPage() {
         totalEarnings: cat.totalEarnings || 0,
       }));
 
-      setCategories(transformed);
+      setServices(transformed);
       setTotal(data.total || 0);
     } catch (err) {
-      console.error('Failed to fetch categories:', err);
+      console.error('Failed to fetch services:', err);
     } finally {
       setIsLoading(false);
     }
@@ -106,8 +106,8 @@ export default function CategoriesPage() {
     if (!slug) return;
     try {
       setIsLoading(true);
-      await apiClient.patch(`/category/V1/update-status/${slug}`);
-      await fetchCategories();
+      await apiClient.patch(`/service/V1/update-status/${slug}`);
+      await fetchServices();
       await fetchAnalytics();
     } catch (err) {
       console.error('Failed to toggle status:', err);
@@ -119,13 +119,13 @@ export default function CategoriesPage() {
   };
 
    /* -------------------------------------------------- DELETE -------------------------------------------------- */
-  const handleDeleteCategory = async (slug: string) => {
+  const handleDeleteService = async (slug: string) => {
     alert(slug);
     if (!slug) return;
     try {
       setIsLoading(true);
-      await apiClient.delete(`/category/V1/delete-category-by-slug/${slug}`);
-      await fetchCategories();
+      await apiClient.delete(`/service/V1/delete-service-by-slug/${slug}`);
+      await fetchServices();
       await fetchAnalytics();
     } catch (err) {
       console.error('Failed to toggle status:', err);
@@ -146,12 +146,12 @@ export default function CategoriesPage() {
     {
       key: 'image',
       header: 'Image',
-      render: (item: Category) =>
+      render: (item: Service) =>
         item.image_url ? (
           <div className="relative h-10 w-10 rounded-md overflow-hidden">
             <Image
               src={item.image_url}
-              alt={item.image_alt || 'Category Image'}
+              alt={item.image_alt || 'Service Image'}
               fill
               loading="lazy"
               className="object-cover"
@@ -166,9 +166,9 @@ export default function CategoriesPage() {
     {
       key: 'name',
       header: 'Name',
-      render: (item: Category) => (
+      render: (item: Service) => (
         <button
-          onClick={() => router.push(`/categories/${item.category_slug}`)}
+          onClick={() => router.push(`/services/${item.service_slug}`)}
           className="font-semibold hover:text-violet-600 transition-colors"
         >
           {item.title}
@@ -178,23 +178,23 @@ export default function CategoriesPage() {
     {
       key: 'position',
       header: 'Position',
-      render: (item: Category) => <span className="text-center">{item.position}</span>,
+      render: (item: Service) => <span className="text-center">{item.position}</span>,
     },
     {
       key: 'productsCount',
       header: 'Total Products',
-      render: (item: Category) => <span className="text-center">{item.productsCount}</span>,
+      render: (item: Service) => <span className="text-center">{item.productsCount}</span>,
     },
     {
       key: 'totalEarnings',
       header: 'Total Earnings',
-      render: (item: Category) => <span className="text-center">₹{item.totalEarnings}</span>,
+      render: (item: Service) => <span className="text-center">₹{item.totalEarnings}</span>,
     },
   ];
 
   /* -------------------------------------------------- RENDER -------------------------------------------------- */
   return (
-    <ContentLayout title="Categories">
+    <ContentLayout title="Services">
       {/* Top Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Products */}
@@ -233,7 +233,7 @@ export default function CategoriesPage() {
           </div>
         </div>
 
-        {/* Total Categories */}
+        {/* Total services */}
         <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
           <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-violet-600 to-fuchsia-600 rounded" />
           <div className="flex flex-col gap-1">
@@ -241,24 +241,24 @@ export default function CategoriesPage() {
               <div className="rounded bg-violet-100 p-1.5 flex items-center justify-center">
                 <Package className="h-4 w-4 text-violet-600" />
               </div>
-              <h4 className="text-xs font-semibold text-violet-600 uppercase">Total Categories</h4>
+              <h4 className="text-xs font-semibold text-violet-600 uppercase">Total Services</h4>
             </div>
             <p className="text-xl font-bold text-gray-900">
-              {analyticsLoading ? '...' : analytics.activeCategoryCount + analytics.inactiveCategoryCount}
+              {analyticsLoading ? '...' : analytics.activeServiceCount + analytics.inactiveServiceCount}
             </p>
             <div className="flex justify-between text-xs text-gray-600">
               <div className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-green-500" />
                 Active:{' '}
                 <span className="font-semibold text-green-600">
-                  {analyticsLoading ? '...' : analytics.activeCategoryCount}
+                  {analyticsLoading ? '...' : analytics.activeServiceCount}
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-red-500" />
                 Inactive:{' '}
                 <span className="font-semibold text-red-600">
-                  {analyticsLoading ? '...' : analytics.inactiveCategoryCount}
+                  {analyticsLoading ? '...' : analytics.inactiveServiceCount}
                 </span>
               </div>
             </div>
@@ -268,19 +268,19 @@ export default function CategoriesPage() {
 
       {/* ListComponent */}
       <ListComponent
-        title="Category"
-        data={categories}
+        title="Service"
+        data={services}
         columns={columns}
         isLoading={isLoading}
-        addRoute="/categories/add"
-        editRoute={(slug) => `/categories/edit/${slug}`}
-        viewRoute={(slug) => `/categories/${slug}`}
-        deleteEndpoint={(slug) => `/category/V1/delete-category-by-slug/${slug}`}
+        addRoute="/services/add"
+        editRoute={(slug) => `/services/edit/${slug}`}
+        viewRoute={(slug) => `/services/${slug}`}
+        deleteEndpoint={(slug) => `/service/V1/delete-service-by-slug/${slug}`}
         onDelete={async (slug) => {
           setDeleteSlug(slug);
           setDeleteDialog(true);
         }}
-        statusToggleEndpoint={(slug) => `/category/V1/update-status/${slug}`}
+        statusToggleEndpoint={(slug) => `/service/V1/update-status/${slug}`}
         onStatusToggle={async (slug: string) => {
           setSelectedSlug(slug);
           setOpenDialog(true);
@@ -304,7 +304,7 @@ export default function CategoriesPage() {
           setSelectedSlug(null);
         }}
         title="Confirm Status Update"
-        description="Are you sure you want to update the active status of this category?"
+        description="Are you sure you want to update the active status of this service?"
         onConfirm={() => handleStatusToggle(selectedSlug!)}
         confirmText="Confirm"
       />
@@ -316,8 +316,8 @@ export default function CategoriesPage() {
           setDeleteSlug(null);
         }}
         title="Confirm Delete"
-        description="Are you sure you want to delete this category?"
-        onConfirm={async () => { handleDeleteCategory(deleteSlug!)  }}
+        description="Are you sure you want to delete this service?"
+        onConfirm={async () => { handleDeleteService(deleteSlug!)  }}
         confirmText="Confirm"
       />
     </ContentLayout>

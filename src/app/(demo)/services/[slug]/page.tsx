@@ -42,11 +42,11 @@ function StatCard({
     );
 }
 
-export default function CategoryDetailsPage() {
+export default function ServiceDetailsPage() {
     const { slug } = useParams();
     console.log(slug, "slug");
     const router = useRouter()
-    const [category, setCategory] = useState<any>(null);
+    const [service, setService] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -54,20 +54,20 @@ export default function CategoryDetailsPage() {
     useEffect(() => {
         if (!slug) return;
         setLoading(true)
-        const fetchCategory = async () => {
+        const fetchService = async () => {
             try {
-                const res = await apiClient.get(`/category/V1/get-category-by-slug/${slug}`);
+                const res = await apiClient.get(`/service/V1/get-service-by-slug/${slug}`);
                 console.log(res.data, "response");
-                setCategory(res.data.data);  // Access the first item in the data array
+                setService(res.data.data);  // Access the first item in the data array
             } catch (error) {
-                console.error('Failed to fetch category:', error);
-                setError('Failed to load category data. Please try again later.');
+                console.error('Failed to fetch service:', error);
+                setError('Failed to load service data. Please try again later.');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchCategory();
+        fetchService();
 
     }, [slug]);
 
@@ -87,10 +87,10 @@ export default function CategoryDetailsPage() {
 
     if (loading) return <p>Loading...</p>;
     if (error) return <p className="text-red-500">{error}</p>;
-    if (!category) return <p>Category not found.</p>;
+    if (!service) return <p>service not found.</p>;
 
     return (
-        <ContentLayout title={category.name}>
+        <ContentLayout title={service.name}>
             {/* Category Overview */}
             {loading && <Loader />}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -100,10 +100,10 @@ export default function CategoryDetailsPage() {
                     </CardHeader>
                     <CardContent className="flex gap-4">
                         <div className="relative h-32 w-32 rounded-xl overflow-hidden border">
-                            {category.image_url ? (
+                            {service.image_url ? (
                                 <Image
-                                    src={category.image_url}
-                                    alt={category.image_alt || category.title || 'Category image'}
+                                    src={service.image_url}
+                                    alt={service.image_alt || service.title || 'service image'}
                                     fill
                                     className="object-cover"
                                     unoptimized
@@ -115,16 +115,16 @@ export default function CategoryDetailsPage() {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-xl font-semibold">{category.name}</h3>
-                            <p className="text-muted-foreground">{category.description}</p>
+                            <h3 className="text-xl font-semibold">{service.name}</h3>
+                            <p className="text-muted-foreground">{service.description}</p>
                             <div className="flex items-center gap-2">
                                 <Badge
-                                    className={`text-white ${category.status === 'active' ? 'bg-gradient-to-b from-[#8000FF] to-[#DE00FF]' : 'bg-gray-300'}`}
+                                    className={`text-white ${service.status === 'active' ? 'bg-gradient-to-b from-[#8000FF] to-[#DE00FF]' : 'bg-gray-300'}`}
                                 >
-                                    {category.status}
+                                    {service.status}
                                 </Badge>
                                 <span className="text-sm text-muted-foreground">
-                                    Created on {new Date(category.createdAt).toLocaleDateString()}
+                                    Created on {new Date(service.createdAt).toLocaleDateString()}
                                 </span>
                             </div>
                         </div>
@@ -140,7 +140,7 @@ export default function CategoryDetailsPage() {
                         <div className="flex items-center justify-center">
                             <div className="relative h-32 w-32">
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-2xl font-bold">{category.subcategoryCount}</span>
+                                    <span className="text-2xl font-bold">{service.subserviceCount}</span>
                                 </div>
                                 <svg className="w-full h-full" viewBox="0 0 36 36">
                                     <path
@@ -152,9 +152,9 @@ export default function CategoryDetailsPage() {
                                     <path
                                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                         fill="none"
-                                        stroke="url(#subcategoryGradient)"
+                                        stroke="url(#subserviceGradient)"
                                         strokeWidth="3"
-                                        strokeDasharray={`${(category.subcategoryCount / 100) * 100}, 100`} // Assuming 100 as max for scaling
+                                        strokeDasharray={`${(service.subserviceCount / 100) * 100}, 100`} // Assuming 100 as max for scaling
                                     />
                                     <defs>
                                         <linearGradient id="subcategoryGradient" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -173,7 +173,7 @@ export default function CategoryDetailsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <StatCard
                     title="Total Products"
-                    value={category.productCount}
+                    value={service.productCount}
                     icon={<Package className="h-5 w-5" />}
                     trend="+5%"
                 />
@@ -233,27 +233,6 @@ export default function CategoryDetailsPage() {
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
-                        {/* <TableBody>
-                            {category.products.map((product: any) => (
-                                <TableRow key={product._id}>
-                                    <TableCell className="font-medium">{product.name}</TableCell>
-                                    <TableCell>${product.base_price.toFixed(2)}</TableCell>
-                                    <TableCell>{calculateTotalStock(product.stock)}</TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            className={`text-white ${product.status === 'active' ? 'bg-gradient-to-b from-[#8000FF] to-[#DE00FF]' : 'bg-gray-400'}`}
-                                        >
-                                            {product.status}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => router.push(`/products/${product.slug}`)}>
-                                            View
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody> */}
                     </Table>
                 </CardContent>
             </Card>
