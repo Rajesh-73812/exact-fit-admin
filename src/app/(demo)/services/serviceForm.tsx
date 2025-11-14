@@ -95,53 +95,58 @@ const ServiceForm: React.FC<ServiceFormProps> = ({ slug }) => {
 
   // ──────────────────────── FETCH (EDIT MODE) ────────────────────────
   useEffect(() => {
-    if (!isEdit) return;
+  if (!isEdit || !slug) return;
 
-    const fetchService = async () => {
-      setIsLoading(true);
-      try {
-        const { data } = await apiClient.get(`/service/V1/get-service-by-slug/${slug}`);
-        const cat = data.data;
+  const fetchService = async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await apiClient.get(`/service/V1/get-service-by-slug/${slug}`);
+      const svc = data.data;
 
-        setFormData({
-          title: cat.title || '',
-          service_slug: cat.service_slug || '',
-          position: cat.position?.toString() || '',
-          image_alt: cat.image_alt || '',
-          is_active: cat.status === 'active' ? '1' : '0',
-          description: cat.description || '',
-          image_url: null,
-          existing_image_url: cat.image_url || '',
-        });
-        setImagePreview(cat.image_url || null);
-      } catch (err: any) {
-        console.error('Failed to load service:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      setFormData({
+        title: svc.title || '',
+        service_slug: svc.service_slug || '', // ← Use API slug
+        position: svc.position?.toString() || '',
+        image_alt: svc.image_alt || '',
+        is_active: svc.status === 'active' ? '1' : '0',
+        description: svc.description || '',
+        image_url: null,
+        existing_image_url: svc.image_url || '',
+      });
+      setImagePreview(svc.image_url || null);
+    } catch (err) {
+      console.error('Failed to load service:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchService();
-  }, [slug, isEdit]);
+  fetchService();
+}, [slug, isEdit]);
 
   // ──────────────────────── SLUG GENERATOR ────────────────────────
   const generateSlug = (title: string) =>
-    title
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+  title
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')     // ← Replace ALL spaces with '-'
+    .replace(/[^a-z0-9-]/g, '') // Remove invalid chars
+    .replace(/-+/g, '-')      // Collapse multiple '-'
+    .replace(/^-+|-+$/g, ''); // Trim leading/trailing '-'
 
   // ──────────────────────── INPUT HANDLERS ────────────────────────
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-      ...(name === 'title' && !isEdit && { service_slug: generateSlug(value) }), // only auto-fill on create
-    }));
-    setErrors((prev) => ({ ...prev, [name]: undefined }));
-  };
+  const { name, value } = e.target;
+
+  setFormData((prev) => ({
+    ...prev,
+    [name]: value,
+    // Only auto-generate slug when creating AND title changes
+    ...(name === 'title' && !isEdit && { service_slug: generateSlug(value) }),
+  }));
+
+  setErrors((prev) => ({ ...prev, [name]: undefined }));
+};
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -62,7 +62,7 @@ const getRowId = (item: any): string => {
   // 2. explicit `_id` (Mongo)
   if (item._id != null) return String(item._id);
   // 3. slug
-  if (item.category_slug != null) return String(item.category_slug);
+  if (item.service_slug != null) return String(item.service_slug);
   // 4. fallback – title (rare)
   if (item.title != null) return String(item.title);
   return '';

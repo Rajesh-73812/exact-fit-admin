@@ -57,11 +57,13 @@ export default function ServicesPage() {
     setAnalyticsLoading(true);
     try {
       const { data } = await apiClient.get('/service/V1/get-all-service');
+
+      console.log(data, "dataaaaaaaaaaaaa2222")
       setAnalytics({
         product: data.TotalProduct || 0,
         Earning: data.TotalEarning || 0,
-        activeServiceCount: data.activeServiceCount || 0,
-        inactiveServiceCount: data.inactiveServiceCount || 0,
+        activeServiceCount: data.activeserviceCount || 0,
+        inactiveServiceCount: data.inactiveserviceCount || 0,
       });
 
       console.log(data, "dataaaaaaaaaaaaa")
@@ -75,14 +77,14 @@ export default function ServicesPage() {
   const fetchServices = async () => {
     setIsLoading(true);
     try {
-      const { data } = await apiClient.get('/services/V1/get-all-services', {
+      const { data } = await apiClient.get('/service/V1/get-all-service', {
         params: { page, limit: 10, search: searchQuery || undefined },
       });
 
       const items = data.data || [];
       const transformed: Service[] = items.map((cat: any) => ({
         title: cat.title || '',
-        service_slug: cat.services_slug || '',
+        service_slug: cat.service_slug || '',
         position: cat.position?.toString() || '',
         status: cat.status === 'active' ? 'active' : 'inactive',
         image_url: cat.image_url || '',
@@ -93,6 +95,7 @@ export default function ServicesPage() {
       }));
 
       setServices(transformed);
+      console.log(transformed, "transformed services")
       setTotal(data.total || 0);
     } catch (err) {
       console.error('Failed to fetch services:', err);
@@ -103,10 +106,12 @@ export default function ServicesPage() {
 
   /* -------------------------------------------------- TOGGLE -------------------------------------------------- */
   const handleStatusToggle = async (slug: string) => {
+    alert(slug);
     if (!slug) return;
     try {
       setIsLoading(true);
-      await apiClient.patch(`/service/V1/update-status/${slug}`);
+      const response = await apiClient.patch(`/service/V1/update-status/${slug}`);
+      console.log(response.data, "from toggle response")
       await fetchServices();
       await fetchAnalytics();
     } catch (err) {
@@ -118,7 +123,7 @@ export default function ServicesPage() {
     }
   };
 
-   /* -------------------------------------------------- DELETE -------------------------------------------------- */
+  /* -------------------------------------------------- DELETE -------------------------------------------------- */
   const handleDeleteService = async (slug: string) => {
     alert(slug);
     if (!slug) return;
@@ -205,7 +210,7 @@ export default function ServicesPage() {
               <div className="rounded bg-violet-100 p-1.5 flex items-center justify-center">
                 <Package className="h-4 w-4 text-violet-600" />
               </div>
-              <h4 className="text-xs font-semibold text-violet-600 uppercase">Total Products</h4>
+              <h4 className="text-xs font-semibold text-violet-600 uppercase">Total Sub Services</h4>
             </div>
             <p className="text-xl font-bold text-gray-900">{analytics.product}</p>
             <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -317,7 +322,7 @@ export default function ServicesPage() {
         }}
         title="Confirm Delete"
         description="Are you sure you want to delete this service?"
-        onConfirm={async () => { handleDeleteService(deleteSlug!)  }}
+        onConfirm={async () => { handleDeleteService(deleteSlug!) }}
         confirmText="Confirm"
       />
     </ContentLayout>

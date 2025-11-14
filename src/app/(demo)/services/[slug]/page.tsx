@@ -91,12 +91,12 @@ export default function ServiceDetailsPage() {
 
     return (
         <ContentLayout title={service.name}>
-            {/* Category Overview */}
+            {/* service Overview */}
             {loading && <Loader />}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <Card className="md:col-span-2 shadow-lg">
                     <CardHeader>
-                        <CardTitle className="text-lg text-gray-800">Category Overview</CardTitle>
+                        <CardTitle className="text-lg text-gray-800">Service Overview</CardTitle>
                     </CardHeader>
                     <CardContent className="flex gap-4">
                         <div className="relative h-32 w-32 rounded-xl overflow-hidden border">
@@ -131,7 +131,7 @@ export default function ServiceDetailsPage() {
                     </CardContent>
                 </Card>
 
-                {/* Subcategory Count */}
+                {/* service Count */}
                 <Card className="shadow-lg">
                     <CardHeader>
                         <CardTitle>Subcategories</CardTitle>
@@ -220,7 +220,7 @@ export default function ServiceDetailsPage() {
             {/* Products Table */}
             <Card className="shadow-lg">
                 <CardHeader>
-                    <CardTitle>Products in Category</CardTitle>
+                    <CardTitle>Sub Services in Service</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
