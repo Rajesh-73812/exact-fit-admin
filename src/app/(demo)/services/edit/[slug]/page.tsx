@@ -1,11 +1,11 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import CategoryForm from '../../categoryForm';
+import ServiceForm from '../../serviceForm';
 
-export default function EditSubCategoryPage() {
+export default function EditSubServicePage() {
   const params = useParams();
   const slug = params?.slug as string;
 
-  return <CategoryForm slug={slug} />;
+  return <ServiceForm slug={slug} />;
 }
