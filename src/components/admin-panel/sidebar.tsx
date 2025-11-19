@@ -4,8 +4,10 @@ import { SidebarToggle } from "@/components/admin-panel/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useStore } from "@/hooks/use-store";
+import Logo from "../../../public/Logo_black_background.svg";
 import { cn } from "@/lib/utils";
 import { PanelsTopLeft } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export function Sidebar() {
@@ -15,7 +17,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-20 h-screen -translate-x-full lg:translate-x-0 transition-[width] ease-in-out duration-300 ",
+        "fixed top-0 left-0 z-20 h-screen -translate-x-full lg:translate-x-0 transition-[width ease-in-out duration-300 ",
         !getOpenState() ? "w-[90px]" : "w-72",
         settings.disabled && "hidden"
       )}
@@ -36,17 +38,7 @@ export function Sidebar() {
         >
           <Link href="/dashboard" className="flex items-center gap-2">
             {/* <PanelsTopLeft className="w-6 h-6 mr-1" /> */}
-            <img src="./Frame 1984080200.png" alt="Logo" width="16" height="14" />
-            <h1
-              className={cn(
-                "font-bold text-lg whitespace-nowrap transition-[transform,opacity,display] ease-in-out duration-300",
-                !getOpenState()
-                  ? "-translate-x-96 opacity-0 hidden"
-                  : "translate-x-0 opacity-100"
-              )}
-            >
-              Exact Fit
-            </h1>
+            <Image src={Logo} alt="Logo" width="200" height="150" />
           </Link>
         </Button>
         <Menu isOpen={getOpenState()} />

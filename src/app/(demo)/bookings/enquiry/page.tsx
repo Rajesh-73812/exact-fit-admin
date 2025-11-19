@@ -3,111 +3,117 @@
 import { useState } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, ClipboardList, User } from "lucide-react";
+import { Search, ClipboardList, Clock, CheckCircle, ListChecks } from "lucide-react";
 import ListComponent from "@/components/ListComponent";
+import { Input } from "@/components/ui/input";
 
-const mockEnquiries = [
-  {
-    id: 1,
-    user: "Mark Taylor",
-    title: "House Cleaning Enquiry",
-    date: "12-11-2025",
-    status: "Under Review",
-  },
-  {
-    id: 2,
-    user: "Emily Davis",
-    title: "Gardening Service Enquiry",
-    date: "11-11-2025",
-    status: "In Progress",
-  },
+// TYPE
+type EnquiryItem = {
+  id: number;
+  fullName: string;
+  service: string;
+  date: string;
+  status: string;
+};
+
+const mockEnquiries: EnquiryItem[] = [
+  { id: 1, fullName: "Akhil", service: "AC Service", date: "12-11-2025", status: "Pending" },
+  { id: 2, fullName: "Rohit", service: "House Cleaning", date: "13-11-2025", status: "Under Review" },
+  { id: 3, fullName: "Ramesh", service: "Painting Work", date: "15-11-2025", status: "In Progress" },
 ];
 
-export default function AdminEnquiryPage() {
+export default function AdminEnquiryList() {
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-  const [search, setSearch] = useState("");
 
   const filtered = mockEnquiries.filter(
-    (item) =>
-      item.user.toLowerCase().includes(search.toLowerCase()) ||
-      item.title.toLowerCase().includes(search.toLowerCase())
+    (x) =>
+      x.fullName.toLowerCase().includes(search.toLowerCase()) ||
+      x.service.toLowerCase().includes(search.toLowerCase())
   );
 
   const paginated = filtered.slice((page - 1) * limit, page * limit);
-  const total = filtered.length;
 
   const columns = [
-    { key: "user", header: "Customer", render: (item: any) => <p>{item.user}</p> },
-    { key: "title", header: "Enquiry", render: (item: any) => <p>{item.title}</p> },
-    { key: "date", header: "Date", render: (item: any) => <p>{item.date}</p> },
+    { key: "fullName", header: "Customer", render: (i: EnquiryItem) => <p>{i.fullName}</p> },
+    { key: "service", header: "Service", render: (i: EnquiryItem) => <p>{i.service}</p> },
+    { key: "date", header: "Requested Date", render: (i: EnquiryItem) => <p>{i.date}</p> },
     {
       key: "status",
       header: "Status",
-      render: (item: any) => (
+      render: (i: EnquiryItem) => (
         <Badge
           variant={
-            item.status === "Under Review"
+            i.status === "Pending"
               ? "secondary"
-              : item.status === "In Progress"
+              : i.status === "Under Review"
+              ? "outline"
+              : i.status === "In Progress"
               ? "default"
               : "destructive"
           }
         >
-          {item.status}
+          {i.status}
         </Badge>
       ),
     },
   ];
 
   return (
-    <ContentLayout title="Enquiry Bookings">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 border rounded-lg shadow-sm flex gap-2 items-center">
-          <User className="text-blue-600 w-6 h-6" />
-          <div>
-            <p className="text-xs text-blue-600 font-semibold">Total Enquiries</p>
-            <p className="text-lg font-bold">{mockEnquiries.length}</p>
-          </div>
-        </div>
-        <div className="bg-white p-4 border rounded-lg shadow-sm flex gap-2 items-center">
-          <MessageSquare className="text-green-600 w-6 h-6" />
-          <div>
-            <p className="text-xs text-green-600 font-semibold">In Progress</p>
-            <p className="text-lg font-bold">
-              {mockEnquiries.filter((x) => x.status === "In Progress").length}
-            </p>
-          </div>
-        </div>
-        <div className="bg-white p-4 border rounded-lg shadow-sm flex gap-2 items-center">
-          <ClipboardList className="text-purple-600 w-6 h-6" />
-          <div>
-            <p className="text-xs text-purple-600 font-semibold">Under Review</p>
-            <p className="text-lg font-bold">
-              {mockEnquiries.filter((x) => x.status === "Under Review").length}
-            </p>
-          </div>
-        </div>
+    <ContentLayout title="Enquiries">
+      {/* CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <SummaryCard icon={<ClipboardList className="text-primary" />} label="Pending" count={mockEnquiries.filter(x => x.status === "Pending").length} />
+        <SummaryCard icon={<Clock className="text-orange-500" />} label="Under Review" count={mockEnquiries.filter(x => x.status === "Under Review").length} />
+        <SummaryCard icon={<CheckCircle className="text-green-600" />} label="In Progress" count={mockEnquiries.filter(x => x.status === "In Progress").length} />
+        <SummaryCard icon={<ListChecks className="text-gray-600" />} label="Total" count={mockEnquiries.length} />
       </div>
 
+      {/* SEARCH */}
+      <div className="relative w-full max-w-sm mb-4">
+        <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+        <Input
+          type="text"
+          placeholder="Search by customer or service..."
+          className="pl-9"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {/* TABLE */}
       <ListComponent
-        title="Enquiry"
+        title="Enquiries"
         data={paginated}
         columns={columns}
         isLoading={false}
-        viewRoute={(id) => `/admin/bookings/enquiry/${id}`}
-         editRoute={() => ""}              // 👈 add this (dummy placeholder)
-  deleteEndpoint={() => ""}                 // 👈 add this (empty string)
-  statusField="status"
+        viewRoute={(id) => `/bookings/enquiry/view/${id}`}
+        editRoute={(id) => `/bookings/enquiry/edit/${id}`}
+        deleteEndpoint={() => ""}
+        statusField="status"
+        showStatusToggle={false}
         currentPage={page}
         setCurrentPage={setPage}
         itemsPerPage={limit}
         setItemsPerPage={setLimit}
-        totalItems={total}
+        totalItems={filtered.length}
         searchQuery={search}
         setSearchQuery={setSearch}
-        showStatusToggle={false}
       />
     </ContentLayout>
+  );
+}
+
+// Summary Card Component
+function SummaryCard({ icon, label, count }: any) {
+  return (
+    <div className="bg-white p-4 border rounded-lg shadow-sm flex gap-3 items-center">
+      {icon}
+      <div>
+        <p className="text-xs font-semibold text-gray-600">{label}</p>
+        <p className="text-lg font-bold">{count}</p>
+      </div>
+    </div>
   );
 }

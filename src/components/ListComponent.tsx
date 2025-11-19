@@ -302,28 +302,28 @@ export default function ListComponent({
         )}
 
         {/* ----- Table ----- */}
-        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
           <Table>
-            <TableHeader className="bg-secondary">
-              <TableRow className="text-foreground text-sm font-medium hover:bg-secondary">
-                <TableHead className="text-foreground whitespace-nowrap">S.No</TableHead>
+            <TableHeader className="bg-primary hover:bg-primary">
+              <TableRow className="text-foreground text-sm font-medium hover:bg-primary/60">
+                <TableHead className="text-foreground text-white whitespace-nowrap">S.No</TableHead>
                 {columns.map((c) => (
-                  <TableHead key={c.key} className="text-foreground whitespace-nowrap">
+                  <TableHead key={c.key} className="text-foreground text-white whitespace-nowrap">
                     {c.header}
                   </TableHead>
                 ))}
 
                 {/* Status toggle column */}
                 {!isContactUsPage && showStatusToggle && (
-                  <TableHead className="text-foreground whitespace-nowrap">Status</TableHead>
+                  <TableHead className="text-foreground text-white whitespace-nowrap">Status</TableHead>
                 )}
 
                 {/* Approval column */}
                 {showApprovalToggle && customToggleConfig && (
-                  <TableHead className="text-foreground whitespace-nowrap">Approval</TableHead>
+                  <TableHead className="text-foreground text-white whitespace-nowrap">Approval</TableHead>
                 )}
 
-                <TableHead className="text-foreground whitespace-nowrap">Actions</TableHead>
+                <TableHead className="text-foreground  text-white whitespace-nowrap">Actions</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -456,7 +456,7 @@ export default function ListComponent({
                                     onClick={() => router.push(viewRoute(rowId))}
                                     className="text-foreground border-foreground/20 hover:bg-muted"
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    <Eye className="h-4 w-4 text-primary" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>View</TooltipContent>
@@ -478,7 +478,7 @@ export default function ListComponent({
                                     onClick={() => router.push(editRoute(rowId))}
                                     className="text-foreground border-foreground/20 hover:bg-muted"
                                   >
-                                    <Pencil className="h-4 w-4" />
+                                    <Pencil className="h-4 w-4 text-primary" />
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Edit</TooltipContent>

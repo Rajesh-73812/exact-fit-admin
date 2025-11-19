@@ -53,6 +53,7 @@ export default function TechniciansPage() {
       const res = await apiClient.get('/technicians/get-all', {
         params: { page, limit, search, sort },
       });
+      console.log(res,"all technicians")
 
       const { data, total: count } = res.data.data;
       setTechnicians(data);

@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, CheckCircle, Clock, UserCheck } from "lucide-react";
+import { Calendar, CheckCircle, Clock, UserCheck, Search } from "lucide-react";
 import ListComponent from "@/components/ListComponent";
+import { Input } from "@/components/ui/input";
 
 const mockSubscriptions = [
   {
@@ -67,11 +68,12 @@ export default function AdminSubscriptionsPage() {
 
   return (
     <ContentLayout title="Subscription Bookings">
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 border rounded-lg shadow-sm flex gap-2 items-center">
-          <CheckCircle className="text-green-600 w-6 h-6" />
+          <CheckCircle className="text-primary w-6 h-6" />
           <div>
-            <p className="text-xs text-green-600 font-semibold">Active Plans</p>
+            <p className="text-xs text-primary font-semibold">Active Plans</p>
             <p className="text-lg font-bold">
               {mockSubscriptions.filter((x) => x.status === "Active").length}
             </p>
@@ -79,9 +81,9 @@ export default function AdminSubscriptionsPage() {
         </div>
 
         <div className="bg-white p-4 border rounded-lg shadow-sm flex gap-2 items-center">
-          <Calendar className="text-blue-600 w-6 h-6" />
+          <Calendar className="text-primary w-6 h-6" />
           <div>
-            <p className="text-xs text-blue-600 font-semibold">Completed</p>
+            <p className="text-xs text-primary font-semibold">Completed</p>
             <p className="text-lg font-bold">
               {mockSubscriptions.filter((x) => x.status === "Completed").length}
             </p>
@@ -89,22 +91,37 @@ export default function AdminSubscriptionsPage() {
         </div>
 
         <div className="bg-white p-4 border rounded-lg shadow-sm flex gap-2 items-center">
-          <UserCheck className="text-teal-600 w-6 h-6" />
+          <UserCheck className="text-primary w-6 h-6" />
           <div>
-            <p className="text-xs text-teal-600 font-semibold">Total Customers</p>
+            <p className="text-xs text-primary font-semibold">Total Customers</p>
             <p className="text-lg font-bold">{mockSubscriptions.length}</p>
           </div>
         </div>
 
         <div className="bg-white p-4 border rounded-lg shadow-sm flex gap-2 items-center">
-          <Clock className="text-purple-600 w-6 h-6" />
+          <Clock className="text-primary w-6 h-6" />
           <div>
-            <p className="text-xs text-purple-600 font-semibold">Expiring Soon</p>
+            <p className="text-xs text-primary font-semibold">Expiring Soon</p>
             <p className="text-lg font-bold">2</p>
           </div>
         </div>
       </div>
 
+      {/* 🔍 Search bar */}
+      <div className="flex items-center mb-4">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-3 top-2.5 text-gray-400 w-4 h-4" />
+          <Input
+            type="text"
+            placeholder="Search by customer or plan..."
+            className="pl-9 pr-4 py-2 border rounded-md w-full"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Table */}
       <ListComponent
         title="Subscription"
         data={paginated}
