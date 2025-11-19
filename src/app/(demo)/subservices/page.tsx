@@ -111,19 +111,23 @@ export default function SubServicesPage() {
   };
 
   const handleDeleteSubService = async () => {
-    if (!deleteSlug) return;
-    try {
-      setIsLoading(true);
-      await apiClient.delete(`/sub-service/V1/delete-sub-service/${deleteSlug}`);
-      await fetchSubServices();
-    } catch (err) {
-      console.error('Failed to delete sub-service:', err);
-    } finally {
-      setIsLoading(false);
-      setDeleteDialog(false);
-      setDeleteSlug(null);
-    }
-  };
+  if (!deleteSlug) return;
+
+  try {
+    setIsLoading(true);
+    await apiClient.delete(`/sub-service/V1/delete-sub-service-by-slug/${deleteSlug}`);
+    
+    await fetchSubServices(); // refresh list
+  } catch (err: any) {
+    console.error('Failed to delete sub-service:', err);
+    // FIXED: was "al" → now "alert"
+    alert(err?.response?.data?.message || 'Failed to delete sub-service');
+  } finally {
+    setIsLoading(false);
+    setDeleteDialog(false);   // ← this closes the modal
+    setDeleteSlug(null);
+  }
+};
 
   /* -------------------------------------------------- COLUMNS -------------------------------------------------- */
   const columns = [
@@ -263,7 +267,7 @@ export default function SubServicesPage() {
           addRoute="/subservices/add"
           editRoute={(slug) => `/subservices/edit/${slug}`}
           viewRoute={(slug) => `/subservices/${slug}`}
-          deleteEndpoint={(slug) => `/sub-service/V1/delete-sub-service/${slug}`}
+          deleteEndpoint={(slug) => `/sub-service/V1/delete-sub-service-by-slug/${slug}`}
           onDelete={async (slug) => {
             setDeleteSlug(slug);
             setDeleteDialog(true);

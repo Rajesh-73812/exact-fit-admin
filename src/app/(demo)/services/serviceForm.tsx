@@ -1,14 +1,7 @@
 'use client';
 
 import { ContentLayout } from '@/components/admin-panel/content-layout';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Tag, FileText, LocateIcon, ImagePlus, Activity, UploadIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -21,437 +14,238 @@ import Loader from '@/components/utils/Loader';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-// ────────────────────────────────────────────────────────────────
-// AWS S3 Upload Helper (replace with your env vars)
-const uploadImageToS3 = async (file: File): Promise<string> => {
-  const BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET!;
-  const REGION = process.env.NEXT_PUBLIC_S3_REGION!;
-  const ACCESS_KEY = process.env.NEXT_PUBLIC_S3_ACCESS_KEY!;
-  const SECRET_KEY = process.env.NEXT_PUBLIC_S3_SECRET_KEY!;
-
-  const s3 = new S3Client({
-    region: REGION,
-    credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET_KEY },
-  });
-
-  const fileName = `services/${Date.now()}-${file.name.replace(/\s+/g, '-').toLowerCase()}`;
-
-  const command = new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: fileName,
-    Body: file,
-    ContentType: file.type,
-    ACL: 'public-read',
-  });
-
-  await s3.send(command);
-  return `https://${BUCKET}.s3.${REGION}.amazonaws.com/${fileName}`;
+const generateSlug = (title: string): string => {
+  return title
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 };
-// ────────────────────────────────────────────────────────────────
 
-interface FormData {
-  title: string;
-  service_slug?: string;
-  position: string;
-  image_alt: string;
-  is_active: string;
-  description: string;
-  image_url: File | null;
-  existing_image_url?: string; // keep old URL when no new file
-}
+export default function ServiceForm() {
+  const router = useRouter();
+  const { slug } = useParams();
+  const isEdit = !!slug;
 
-interface Errors {
-  title?: string;
-  position?: string;
-  image_alt?: string;
-  description?: string;
-  image_url?: string;
-}
-
-interface ServiceFormProps {
-  slug?: string; // Make it optional because it will only be available in edit mode
-}
-const ServiceForm: React.FC<ServiceFormProps> = ({ slug }) => { 
-   const router = useRouter();
-  // const { slug } = useParams();               // <-- slug from URL
-  const isEdit = !!slug;                      // true → edit, false → create
-
+  const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isImageEnlarged, setIsImageEnlarged] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState({
     title: '',
     service_slug: '',
     position: '',
     image_alt: '',
-    is_active: '1',
     description: '',
-    image_url: null,
+    is_active: '1',
+    image_url: null as File | null,
     existing_image_url: '',
   });
-  const [errors, setErrors] = useState<Errors>({});
 
-  // ──────────────────────── FETCH (EDIT MODE) ────────────────────────
+  // Auto-update slug when title changes
   useEffect(() => {
-  if (!isEdit || !slug) return;
-
-  const fetchService = async () => {
-    setIsLoading(true);
-    try {
-      const { data } = await apiClient.get(`/service/V1/get-service-by-slug/${slug}`);
-      const svc = data.data;
-
-      setFormData({
-        title: svc.title || '',
-        service_slug: svc.service_slug || '', // ← Use API slug
-        position: svc.position?.toString() || '',
-        image_alt: svc.image_alt || '',
-        is_active: svc.status === 'active' ? '1' : '0',
-        description: svc.description || '',
-        image_url: null,
-        existing_image_url: svc.image_url || '',
-      });
-      setImagePreview(svc.image_url || null);
-    } catch (err) {
-      console.error('Failed to load service:', err);
-    } finally {
-      setIsLoading(false);
+    if (formData.title.trim()) {
+      setFormData(prev => ({ ...prev, service_slug: generateSlug(prev.title) }));
     }
-  };
+  }, [formData.title]);
 
-  fetchService();
-}, [slug, isEdit]);
+  // Load service in edit mode
+  useEffect(() => {
+    if (!isEdit || !slug) return;
 
-  // ──────────────────────── SLUG GENERATOR ────────────────────────
-  const generateSlug = (title: string) =>
-  title
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')     // ← Replace ALL spaces with '-'
-    .replace(/[^a-z0-9-]/g, '') // Remove invalid chars
-    .replace(/-+/g, '-')      // Collapse multiple '-'
-    .replace(/^-+|-+$/g, ''); // Trim leading/trailing '-'
+    const fetchService = async () => {
+      setLoading(true);
+      try {
+        const { data } = await apiClient.get(`/service/V1/get-service-by-slug/${slug}`);
+        const svc = data.data;
 
-  // ──────────────────────── INPUT HANDLERS ────────────────────────
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  const { name, value } = e.target;
+        setFormData({
+          title: svc.title || '',
+          service_slug: svc.service_slug || '',
+          position: svc.position?.toString() || '',
+          image_alt: svc.image_alt || '',
+          description: svc.description || '',
+          is_active: svc.status === 'active' ? '1' : '0',
+          image_url: null,
+          existing_image_url: svc.image_url || '',
+        });
+        setImagePreview(svc.image_url || null);
+      } catch (err) {
+        alert('Failed to load service');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  setFormData((prev) => ({
-    ...prev,
-    [name]: value,
-    // Only auto-generate slug when creating AND title changes
-    ...(name === 'title' && !isEdit && { service_slug: generateSlug(value) }),
-  }));
-
-  setErrors((prev) => ({ ...prev, [name]: undefined }));
-};
+    fetchService();
+  }, [slug, isEdit]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.size > 1024 * 1024) {
-      setErrors((prev) => ({ ...prev, image_url: 'Image must be ≤ 1 MB' }));
+      alert('Image must be ≤ 1MB');
       return;
     }
 
-    setErrors((prev) => ({ ...prev, image_url: undefined }));
-    setFormData((prev) => ({ ...prev, image_url: file }));
+    setFormData(prev => ({ ...prev, image_url: file }));
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  const handleSelectChange = (value: string) => {
-    setFormData((prev) => ({ ...prev, is_active: value }));
-  };
-
-  // ──────────────────────── VALIDATION ────────────────────────
-  const validateForm = () => {
-    const newErrors: Errors = {};
-
-    if (!formData.title) newErrors.title = 'Title is required';
-    else if (formData.title.length < 2 || formData.title.length > 255)
-      newErrors.title = 'Title: 2–255 characters';
-
-    if (formData.position && isNaN(Number(formData.position)))
-      newErrors.position = 'Position must be a number';
-
-    if (formData.description && formData.description.length < 10)
-      newErrors.description = 'Description ≥ 10 chars';
-
-    if (formData.image_alt && (formData.image_alt.length < 2 || formData.image_alt.length > 255))
-      newErrors.image_alt = 'Alt text: 2–255 chars';
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // ──────────────────────── SUBMIT ────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    if (!formData.title.trim()) {
+      alert('Title is required');
+      return;
+    }
 
-    setIsLoading(true);
+    setLoading(true);
+
     try {
-      let finalImageUrl: string | null = formData.existing_image_url || null;
+      let imageUrl = formData.existing_image_url;
 
-      // Upload new image if selected
       if (formData.image_url) {
-        finalImageUrl = await uploadImageToS3(formData.image_url);
+        const uploadData = new FormData();
+        uploadData.append('image', formData.image_url);
+        const uploadRes = await apiClient.post('/upload-image', uploadData);
+        imageUrl = uploadRes.data.url;
       }
 
       const payload = {
-        ...(isEdit && { service_slug: formData.service_slug }), // send slug on edit
-        title: formData.title,
-        ...(isEdit ? {} : { service_slug: generateSlug(formData.title) }), // auto on create
+        title: formData.title.trim(),
+        service_slug: generateSlug(formData.title),
+        // This is the key: send old slug so backend knows which record to update
+        ...(isEdit && { old_service_slug: slug as string }),
         position: formData.position ? Number(formData.position) : null,
-        description: formData.description,
-        image_url: finalImageUrl,
-        image_alt: formData.image_alt,
+        description: formData.description.trim(),
+        image_url: imageUrl,
+        image_alt: formData.image_alt.trim(),
         status: formData.is_active === '1' ? 'active' : 'inactive',
         external_link: '',
       };
 
-      await apiClient.post('/service/V1/upsert-service', payload, {
-        withCredentials: true,
-        headers: { 'Content-Type': 'application/json' },
-      });
-
+      await apiClient.post('/service/V1/upsert-service', payload);
       router.push('/services');
     } catch (err: any) {
-      console.error('Save error:', err);
-      if (err.response?.data?.errors) {
-        const newErrors: Errors = {};
-        err.response.data.errors.forEach((e: { field: string; message: string }) => {
-          const map: Record<string, keyof Errors> = {
-            title: 'title',
-            position: 'position',
-            image_alt: 'image_alt',
-            description: 'description',
-            image_url: 'image_url',
-          };
-          const key = map[e.field] || (e.field as keyof Errors);
-          newErrors[key] = e.message;
-        });
-        setErrors(newErrors);
-      }
+      alert(err.response?.data?.message || 'Something went wrong');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // ──────────────────────── RENDER ────────────────────────
   return (
     <ContentLayout title={isEdit ? 'Edit Service' : 'Add Service'}>
-      {isLoading && <Loader />}
+      {loading && <Loader />}
 
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/dashboard" prefetch={false}>Dashboard</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
+          <BreadcrumbItem><Link href="/dashboard">Dashboard</Link></BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link href="/service" prefetch={false}>Services</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
+          <BreadcrumbItem><Link href="/services">Services</Link></BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{isEdit ? 'Edit Service' : 'Add Service'}</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbPage>{isEdit ? 'Edit' : 'Create'}</BreadcrumbPage></BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="mt-6">
-        <form onSubmit={handleSubmit}>
-          <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row">
-            {/* ─────── LEFT: FORM FIELDS ─────── */}
-            <div className="w-full md:w-1/2 p-8 bg-gradient-to-br from-gray-50 to-white dark:from-gray-700 dark:to-gray-800 border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-600">
-              <div className="space-y-6">
-                {/* Title */}
-                <div>
-                  <Label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                    <Tag className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-                    Service Name <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    name="title"
-                    placeholder="Enter Service name"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    required
-                    className={errors.title ? 'border-red-500' : ''}
-                  />
-                  {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-                </div>
+      <div className="mt-8 max-w-6xl mx-auto">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-                {/* Slug (read-only in edit) */}
-                <div>
-                  <Label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                    <Tag className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-                    Slug {isEdit && '(auto-generated)'}
-                  </Label>
-                  <Input
-                    name="service_slug"
-                    placeholder="auto-generated"
-                    value={formData.service_slug}
-                    readOnly
-                    className="bg-gray-100 dark:bg-gray-700"
-                  />
-                </div>
-
-                {/* Position */}
-                <div>
-                  <Label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                    <LocateIcon className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-                    Position
-                  </Label>
-                  <Input
-                    type="number"
-                    name="position"
-                    min={0}
-                    placeholder="Enter Position"
-                    value={formData.position}
-                    onChange={handleInputChange}
-                    className={errors.position ? 'border-red-500' : ''}
-                  />
-                  {errors.position && <p className="text-red-500 text-sm mt-1">{errors.position}</p>}
-                </div>
-
-                {/* Image ALT */}
-                <div>
-                  <Label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                    <ImagePlus className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-                    Image ALT
-                  </Label>
-                  <Input
-                    name="image_alt"
-                    placeholder="Enter Image Alternative"
-                    value={formData.image_alt}
-                    onChange={handleInputChange}
-                    className={errors.image_alt ? 'border-red-500' : ''}
-                  />
-                  {errors.image_alt && <p className="text-red-500 text-sm mt-1">{errors.image_alt}</p>}
-                </div>
-
-                {/* Status */}
-                <div>
-                  <Label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                    <Activity className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-                    Status <span className="text-red-500">*</span>
-                  </Label>
-                  <Select value={formData.is_active} onValueChange={handleSelectChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Active</SelectItem>
-                      <SelectItem value="0">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <Label className="flex items-center text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">
-                    <FileText className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
-                    Description
-                  </Label>
-                  <Textarea
-                    name="description"
-                    placeholder="Enter Description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    className={errors.description ? 'border-red-500' : ''}
-                  />
-                  {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
-                </div>
-              </div>
+          {/* Left: Form */}
+          <div className="space-y-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+            <div>
+              <Label className="flex items-center gap-2"><Tag className="w-5 h-5" /> Service Name <span className="text-red-500">*</span></Label>
+              <Input
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="e.g. Web Development"
+                required
+              />
             </div>
 
-            {/* ─────── RIGHT: IMAGE PREVIEW ─────── */}
-            <div className="w-full md:w-1/2 p-8 flex flex-col justify-center bg-white dark:bg-gray-800">
-              <div className="w-full h-72 border-2 border-dashed border-indigo-300 dark:border-indigo-600 rounded-xl flex items-center justify-center relative">
-                {imagePreview ? (
-                  <Image
-                    src={imagePreview}
-                    alt="Preview"
-                    fill
-                    className="object-contain rounded-lg cursor-pointer"
-                    onClick={() => setIsImageEnlarged(true)}
-                  />
-                ) : (
-                  <div className="flex flex-col items-center text-center">
-                    <UploadIcon className="w-8 h-8 mb-2 text-gray-400 dark:text-gray-500" />
-                    <span className="text-gray-900 dark:text-gray-100 text-lg font-semibold">
-                      No Image Selected
-                    </span>
-                    <span className="text-gray-500 dark:text-gray-400 text-sm">
-                      JPEG, PNG, up to 1MB
-                    </span>
-                  </div>
-                )}
-              </div>
+            <div>
+              <Label>URL Slug (auto-generated)</Label>
+              <Input value={formData.service_slug} readOnly className="bg-gray-100 font-mono" />
+              <p className="text-sm text-gray-500 mt-1">Updates automatically when title changes</p>
+            </div>
 
-              <div className="mt-4">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600"
-                />
-              </div>
+            <div>
+              <Label><LocateIcon className="w-5 h-5 inline mr-2" /> Position</Label>
+              <Input
+                type="number"
+                value={formData.position}
+                onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+                placeholder="e.g. 1"
+              />
+            </div>
 
-              {errors.image_url && <p className="text-red-500 text-sm mt-2">{errors.image_url}</p>}
+            <div>
+              <Label><ImagePlus className="w-5 h-5 inline mr-2" /> Image Alt Text</Label>
+              <Input
+                value={formData.image_alt}
+                onChange={(e) => setFormData(prev => ({ ...prev, image_alt: e.target.value }))}
+                placeholder="Describe image for SEO"
+              />
+            </div>
 
-              {/* Enlarged Image Modal */}
-              {isImageEnlarged && imagePreview && (
-                <div
-                  className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center p-4"
-                  onClick={() => setIsImageEnlarged(false)}
-                >
-                  <div className="relative w-full h-full max-w-4xl max-h-4xl">
-                    <Image src={imagePreview} alt="Enlarged" fill className="object-contain rounded-lg" />
-                    <button
-                      className="absolute top-4 right-4 bg-red-500 text-white rounded-full w-10 h-10 flex items-center justify-center"
-                      onClick={() => setIsImageEnlarged(false)}
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              )}
+            <div>
+              <Label><Activity className="w-5 h-5 inline mr-2" /> Status</Label>
+              <Select value={formData.is_active} onValueChange={(v) => setFormData(prev => ({ ...prev, is_active: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Active</SelectItem>
+                  <SelectItem value="0">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label><FileText className="w-5 h-5 inline mr-2" /> Description</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={6}
+              />
             </div>
           </div>
 
-          {/* ─────── BUTTONS ─────── */}
-          <div className="flex justify-end mt-6 space-x-4">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
-              {isEdit ? 'Update' : 'Create'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push('/services')}
-              disabled={isLoading}
-            >
+          {/* Right: Image */}
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+              <h3 className="text-lg font-semibold mb-4">Service Image</h3>
+              <div className="border-2 border-dashed rounded-xl h-80 flex items-center justify-center overflow-hidden bg-gray-50">
+                {imagePreview ? (
+                  <Image src={imagePreview} alt="Preview" fill className="object-contain" />
+                ) : (
+                  <div className="text-center">
+                    <UploadIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No image selected</p>
+                  </div>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="mt-4 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white"
+              />
+            </div>
+          </div>
+
+          {/* Buttons */}
+          <div className="lg:col-span-2 flex justify-end gap-4">
+            <Button type="button" variant="outline" onClick={() => router.push('/services')}>
               Cancel
+            </Button>
+            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+              {loading ? 'Saving...' : isEdit ? 'Update Service' : 'Create Service'}
             </Button>
           </div>
         </form>
       </div>
     </ContentLayout>
   );
-};
-
-export default ServiceForm;
+}
