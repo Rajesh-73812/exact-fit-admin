@@ -171,6 +171,7 @@ export default function ListComponent({
 
   /* ---------- Delete ---------- */
   const handleDelete = async (id: string) => {
+  
     try {
       setDeletingId(id);
       if (onDelete) {

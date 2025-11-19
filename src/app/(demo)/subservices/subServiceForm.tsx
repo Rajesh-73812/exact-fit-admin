@@ -23,8 +23,6 @@ import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-// ────────────────────────────────────────────────────────────────
-// AWS S3 Upload Helper
 const uploadImageToS3 = async (file: File): Promise<string> => {
     const BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET!;
     const REGION = process.env.NEXT_PUBLIC_S3_REGION!;
@@ -49,7 +47,6 @@ const uploadImageToS3 = async (file: File): Promise<string> => {
     await s3.send(command);
     return `https://${BUCKET}.s3.${REGION}.amazonaws.com/${fileName}`;
 };
-// ────────────────────────────────────────────────────────────────
 
 interface ParentService {
     id: string;
@@ -113,55 +110,51 @@ const SubServiceForm: React.FC = () => {
         existing_hero_banner: null,
     });
 
-    // ──────────────────────── FETCH PARENT SERVICES & EDIT DATA ────────────────────────
     useEffect(() => {
-    const fetchData = async () => {
-        setIsLoading(true);
-        try {
-            const { data: serviceRes } = await apiClient.get('/service/V1/get-all-service');
-            const loadedParents = serviceRes.data.map((s: any) => ({
-                id: s.id,
-                title: s.title,
-            }));
-            setParentServices(loadedParents);
+        const fetchData = async () => {
+            setIsLoading(true);
+            try {
+                const { data: serviceRes } = await apiClient.get('/service/V1/get-all-service');
+                const loadedParents = serviceRes.data.map((s: any) => ({
+                    id: s.id,
+                    title: s.title,
+                }));
+                setParentServices(loadedParents);
 
-            if (isEdit && slug) {
-                const { data } = await apiClient.get(`/sub-service/V1/get-sub-service-by-slug/${slug}`);
-                const svc = data.data;
+                if (isEdit && slug) {
+                    const { data } = await apiClient.get(`/sub-service/V1/get-sub-service-by-slug/${slug}`);
+                    const svc = data.data;
 
-                const parentExists = loadedParents.some((s: any) => s.id === svc.service_id);
+                    setFormData({
+                        title: svc.title || '',
+                        sub_service_slug: svc.sub_service_slug || '',
+                        service_id: svc.service_id || '',
+                        position: svc.position?.toString() || '',
+                        image_alt: svc.image_alt || '',
+                        status: svc.status || 'active',
+                        description: svc.description || '',
+                        external_link: svc.external_link || '',
+                        discount: svc.discount?.toString() || '',
+                        price: svc.price?.toString() || '',
+                        image_url: null,
+                        existing_image_url: svc.image_url || null,
+                        hero_banner_file: null,
+                        existing_hero_banner: svc.hero_banner || null,
+                    });
 
-                setFormData({
-                    title: svc.title || '',
-                    sub_service_slug: svc.sub_service_slug || '',
-                    service_id: parentExists ? svc.service_id : '',
-                    position: svc.position?.toString() || '',
-                    image_alt: svc.image_alt || '',
-                    status: svc.status || 'active',
-                    description: svc.description || '',
-                    external_link: svc.external_link || '',
-                    discount: svc.discount?.toString() || '',
-                    price: svc.price?.toString() || '',
-                    image_url: null,
-                    existing_image_url: svc.image_url || null,
-                    hero_banner_file: null,
-                    existing_hero_banner: svc.hero_banner || null,
-                });
-
-                setImagePreview(svc.image_url || null);
-                setHeroBannerPreview(svc.hero_banner || null);
+                    setImagePreview(svc.image_url || null);
+                    setHeroBannerPreview(svc.hero_banner || null);
+                }
+            } catch (err) {
+                console.error('Failed to load data:', err);
+            } finally {
+                setIsLoading(false);
             }
-        } catch (err) {
-            console.error('Failed to load data:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+        };
 
-    fetchData();
-}, [slug, isEdit]);
+        fetchData();
+    }, [slug, isEdit]);
 
-    // ──────────────────────── SLUG GENERATOR ────────────────────────
     const generateSlug = (title: string) =>
         title
             .toLowerCase()
@@ -169,13 +162,13 @@ const SubServiceForm: React.FC = () => {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '');
 
-    // ──────────────────────── INPUT HANDLERS ────────────────────────
+    // SLUG UPDATES ON BOTH CREATE AND EDIT
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
             ...prev,
             [name]: value,
-            ...(name === 'title' && !isEdit && { sub_service_slug: generateSlug(value) }),
+            ...(name === 'title' && { sub_service_slug: generateSlug(value) }),
         }));
         setErrors((prev) => ({ ...prev, [name]: undefined }));
     };
@@ -183,12 +176,10 @@ const SubServiceForm: React.FC = () => {
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         if (file.size > 1024 * 1024) {
             setErrors((prev) => ({ ...prev, image_url: 'Image must be ≤ 1 MB' }));
             return;
         }
-
         setErrors((prev) => ({ ...prev, image_url: undefined }));
         setFormData((prev) => ({ ...prev, image_url: file }));
         const reader = new FileReader();
@@ -199,12 +190,10 @@ const SubServiceForm: React.FC = () => {
     const handleHeroBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
         if (file.size > 1024 * 1024) {
             setErrors((prev) => ({ ...prev, hero_banner_file: 'Hero banner must be ≤ 1 MB' }));
             return;
         }
-
         setErrors((prev) => ({ ...prev, hero_banner_file: undefined }));
         setFormData((prev) => ({ ...prev, hero_banner_file: file }));
         const reader = new FileReader();
@@ -212,32 +201,19 @@ const SubServiceForm: React.FC = () => {
         reader.readAsDataURL(file);
     };
 
-    // ──────────────────────── VALIDATION ────────────────────────
     const validateForm = (): boolean => {
         const newErrors: Errors = {};
-
         if (!formData.title) newErrors.title = 'Title is required';
         else if (formData.title.length < 2) newErrors.title = 'Title too short';
-
         if (!formData.service_id) newErrors.service_id = 'Parent service is required';
-
-        if (formData.position && isNaN(Number(formData.position)))
-            newErrors.position = 'Position must be a number';
-
-        if (formData.discount && isNaN(Number(formData.discount)))
-            newErrors.discount = 'Discount must be a number';
-
-        if (formData.price && isNaN(Number(formData.price)))
-            newErrors.price = 'Price must be a number';
-
-        if (formData.description && formData.description.length < 10)
-            newErrors.description = 'Description too short';
-
+        if (formData.position && isNaN(Number(formData.position))) newErrors.position = 'Position must be a number';
+        if (formData.discount && isNaN(Number(formData.discount))) newErrors.discount = 'Discount must be a number';
+        if (formData.price && isNaN(Number(formData.price))) newErrors.price = 'Price must be a number';
+        if (formData.description && formData.description.length < 10) newErrors.description = 'Description too short';
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
-    // ──────────────────────── SUBMIT ────────────────────────
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateForm()) return;
@@ -255,9 +231,11 @@ const SubServiceForm: React.FC = () => {
             }
 
             const payload = {
-                sub_service_slug: isEdit ? formData.sub_service_slug : generateSlug(formData.title),
-                service_id: formData.service_id, // ← sends UUID
-                title: formData.title,
+                sub_service_slug: generateSlug(formData.title),
+                ...(isEdit && { old_sub_service_slug: slug as string }), // SEND OLD SLUG ON EDIT
+
+                service_id: formData.service_id,
+                title: formData.title.trim(),
                 position: formData.position ? Number(formData.position) : null,
                 description: formData.description || null,
                 image_url: finalImageUrl,
@@ -269,16 +247,10 @@ const SubServiceForm: React.FC = () => {
                 hero_banner: finalHeroBannerUrl || null,
             };
 
-            await apiClient.post('/sub-service/V1/upsert-sub-service', payload, {
-                headers: { 'Content-Type': 'application/json' },
-            });
-
-            router.push('/subservices'); // ← correct redirect
+            await apiClient.post('/sub-service/V1/upsert-sub-service', payload);
+            router.push('/subservices');
         } catch (err: any) {
-            console.error('Save error:', err);
-            if (err.response?.data?.message) {
-                alert(err.response.data.message);
-            }
+            alert(err.response?.data?.message || 'Something went wrong');
         } finally {
             setIsLoading(false);
         }
