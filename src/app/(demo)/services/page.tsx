@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { TrendingUp, IndianRupee, Package, Image as ImageIcon } from 'lucide-react';
+import {
+  TrendingUp,
+  IndianRupee,
+  Image as ImageIcon,
+  Bookmark,
+  BookmarkMinus,
+} from 'lucide-react';
+
 import ListComponent from '@/components/ListComponent';
 import CustomModal from '@/components/CustomModal';
 import apiClient from '@/lib/apiClient';
@@ -30,49 +37,24 @@ interface ServiceAnalytics {
 
 export default function ServicesPage() {
   const router = useRouter();
+
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
+
   const [analytics, setAnalytics] = useState<ServiceAnalytics>({
     product: 0,
     Earning: 0,
     activeServiceCount: 0,
     inactiveServiceCount: 0,
   });
-
-  /* -------------------------------------------------- FETCH -------------------------------------------------- */
-  useEffect(() => {
-    fetchServices();
-    fetchAnalytics();
-  }, [page, searchQuery]);
-
-  const fetchAnalytics = async () => {
-    setAnalyticsLoading(true);
-    try {
-      const { data } = await apiClient.get('/service/V1/get-all-service');
-
-      console.log(data, "dataaaaaaaaaaaaa2222")
-      setAnalytics({
-        product: data.TotalProduct || 0,
-        Earning: data.TotalEarning || 0,
-        activeServiceCount: data.activeserviceCount || 0,
-        inactiveServiceCount: data.inactiveserviceCount || 0,
-      });
-
-      console.log(data, "dataaaaaaaaaaaaa")
-    } catch (err) {
-      console.error('Failed to fetch analytics:', err);
-    } finally {
-      setAnalyticsLoading(false);
-    }
-  };
 
   const fetchServices = async () => {
     setIsLoading(true);
@@ -82,21 +64,27 @@ export default function ServicesPage() {
       });
 
       const items = data.data || [];
-      const transformed: Service[] = items.map((cat: any) => ({
-        title: cat.title || '',
-        service_slug: cat.service_slug || '',
-        position: cat.position?.toString() || '',
-        status: cat.status === 'active' ? 'active' : 'inactive',
-        image_url: cat.image_url || '',
-        image_alt: cat.image_alt || '',
-        createdAt: cat.createdAt || new Date().toISOString(),
-        productsCount: cat.productsCount || 0,
-        totalEarnings: cat.totalEarnings || 0,
+      const transformed: Service[] = items.map((item: any) => ({
+        title: item.title || '',
+        service_slug: item.service_slug || '',
+        position: item.position?.toString() || '',
+        status: item.status === 'active' ? 'active' : 'inactive',
+        image_url: item.image_url || '',
+        image_alt: item.image_alt || '',
+        createdAt: item.createdAt || new Date().toISOString(),
+        productsCount: item.productsCount || 0,
+        totalEarnings: item.totalEarnings || 0,
       }));
 
       setServices(transformed);
-      console.log(transformed, "transformed services")
-      setTotal(data.total || 0);
+      setTotal(data.pagination?.total || 0);
+
+      setAnalytics({
+        product: data.TotalProduct || 0,
+        Earning: data.TotalEarning || 0,
+        activeServiceCount: data.activeCount || 0,
+        inactiveServiceCount: data.inactiveCount || 0,
+      });
     } catch (err) {
       console.error('Failed to fetch services:', err);
     } finally {
@@ -104,16 +92,16 @@ export default function ServicesPage() {
     }
   };
 
-  /* -------------------------------------------------- TOGGLE -------------------------------------------------- */
+  useEffect(() => {
+    fetchServices();
+  }, [page, searchQuery]);
+
+  // Make handlers async → matches ListComponent's expected signature
   const handleStatusToggle = async (slug: string) => {
-    alert(slug);
-    if (!slug) return;
     try {
       setIsLoading(true);
-      const response = await apiClient.patch(`/service/V1/update-status/${slug}`);
-      console.log(response.data, "from toggle response")
+      await apiClient.patch(`/service/V1/update-status/${slug}`);
       await fetchServices();
-      await fetchAnalytics();
     } catch (err) {
       console.error('Failed to toggle status:', err);
     } finally {
@@ -123,30 +111,20 @@ export default function ServicesPage() {
     }
   };
 
-  /* -------------------------------------------------- DELETE -------------------------------------------------- */
   const handleDeleteService = async (slug: string) => {
-    alert(slug);
-    if (!slug) return;
     try {
       setIsLoading(true);
       await apiClient.delete(`/service/V1/delete-service-by-slug/${slug}`);
       await fetchServices();
-      await fetchAnalytics();
     } catch (err) {
-      console.error('Failed to toggle status:', err);
+      console.error('Failed to delete service:', err);
     } finally {
       setIsLoading(false);
       setDeleteDialog(false);
       setDeleteSlug(null);
     }
   };
-  const openToggleModal = (e: React.MouseEvent, slug: string) => {
-    e.stopPropagation();
-    setSelectedSlug(slug);
-    setOpenDialog(true);
-  };
 
-  /* -------------------------------------------------- COLUMNS -------------------------------------------------- */
   const columns = [
     {
       key: 'image',
@@ -188,29 +166,28 @@ export default function ServicesPage() {
     {
       key: 'productsCount',
       header: 'Total Products',
-      render: (item: Service) => <span className="text-center">{item.productsCount}</span>,
+      render: (item: Service) => <span className="text-center">{item.productsCount ?? 0}</span>,
     },
     {
       key: 'totalEarnings',
       header: 'Total Earnings',
-      render: (item: Service) => <span className="text-center">₹{item.totalEarnings}</span>,
+      render: (item: Service) => <span className="text-center">₹{item.totalEarnings ?? 0}</span>,
     },
   ];
 
-  /* -------------------------------------------------- RENDER -------------------------------------------------- */
   return (
     <ContentLayout title="Services">
-      {/* Top Summary Cards */}
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Total Products */}
+        {/* Total Sub Services */}
         <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-violet-600 to-fuchsia-600 rounded" />
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1">
-              <div className="rounded bg-violet-100 p-1.5 flex items-center justify-center">
-                <Package className="h-4 w-4 text-violet-600" />
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <BookmarkMinus className="h-4 w-4 text-black" />
               </div>
-              <h4 className="text-xs font-semibold text-violet-600 uppercase">Total Sub Services</h4>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">Total Sub Services</h4>
             </div>
             <p className="text-xl font-bold text-gray-900">{analytics.product}</p>
             <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -222,13 +199,13 @@ export default function ServicesPage() {
 
         {/* Total Earnings */}
         <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-violet-600 to-fuchsia-600 rounded" />
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1">
-              <div className="rounded bg-violet-100 p-1.5 flex items-center justify-center">
-                <IndianRupee className="h-4 w-4 text-violet-600" />
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <IndianRupee className="h-4 w-4 text-black" />
               </div>
-              <h4 className="text-xs font-semibold text-violet-600 uppercase">Total Earnings</h4>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">Total Earnings</h4>
             </div>
             <p className="text-xl font-bold text-gray-900">₹{analytics.Earning}</p>
             <div className="flex items-center gap-1 text-xs text-gray-500">
@@ -238,40 +215,34 @@ export default function ServicesPage() {
           </div>
         </div>
 
-        {/* Total services */}
+        {/* Total Services */}
         <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
-          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-violet-600 to-fuchsia-600 rounded" />
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-1">
-              <div className="rounded bg-violet-100 p-1.5 flex items-center justify-center">
-                <Package className="h-4 w-4 text-violet-600" />
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <Bookmark className="h-4 w-4 text-black" />
               </div>
-              <h4 className="text-xs font-semibold text-violet-600 uppercase">Total Services</h4>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">Total Services</h4>
             </div>
             <p className="text-xl font-bold text-gray-900">
-              {analyticsLoading ? '...' : analytics.activeServiceCount + analytics.inactiveServiceCount}
+              {analytics.activeServiceCount + analytics.inactiveServiceCount}
             </p>
             <div className="flex justify-between text-xs text-gray-600">
               <div className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-green-500" />
-                Active:{' '}
-                <span className="font-semibold text-green-600">
-                  {analyticsLoading ? '...' : analytics.activeServiceCount}
-                </span>
+                Active: <span className="font-semibold text-green-600">{analytics.activeServiceCount}</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded-full bg-red-500" />
-                Inactive:{' '}
-                <span className="font-semibold text-red-600">
-                  {analyticsLoading ? '...' : analytics.inactiveServiceCount}
-                </span>
+                Inactive: <span className="font-semibold text-red-600">{analytics.inactiveServiceCount}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ListComponent */}
+      {/* List */}
       <ListComponent
         title="Service"
         data={services}
@@ -281,11 +252,13 @@ export default function ServicesPage() {
         editRoute={(slug) => `/services/edit/${slug}`}
         viewRoute={(slug) => `/services/${slug}`}
         deleteEndpoint={(slug) => `/service/V1/delete-service-by-slug/${slug}`}
-        onDelete={async (slug) => {
+        // Fixed: async + return Promise<void>
+        onDelete={async (slug: string) => {
           setDeleteSlug(slug);
           setDeleteDialog(true);
         }}
         statusToggleEndpoint={(slug) => `/service/V1/update-status/${slug}`}
+        // Fixed: async + return Promise<void>
         onStatusToggle={async (slug: string) => {
           setSelectedSlug(slug);
           setOpenDialog(true);
@@ -293,7 +266,7 @@ export default function ServicesPage() {
         currentPage={page}
         setCurrentPage={setPage}
         itemsPerPage={10}
-        setItemsPerPage={() => { }}
+        setItemsPerPage={() => {}}
         totalItems={total}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -301,7 +274,7 @@ export default function ServicesPage() {
         showStatusToggle={true}
       />
 
-      {/* Status Toggle Modal */}
+      {/* Modals */}
       <CustomModal
         isOpen={openDialog}
         onRequestClose={() => {
@@ -309,7 +282,7 @@ export default function ServicesPage() {
           setSelectedSlug(null);
         }}
         title="Confirm Status Update"
-        description="Are you sure you want to update the active status of this service?"
+        description="Are you sure you want to update the status of this service?"
         onConfirm={() => handleStatusToggle(selectedSlug!)}
         confirmText="Confirm"
       />
@@ -322,8 +295,8 @@ export default function ServicesPage() {
         }}
         title="Confirm Delete"
         description="Are you sure you want to delete this service?"
-        onConfirm={async () => { handleDeleteService(deleteSlug!) }}
-        confirmText="Confirm"
+        onConfirm={() => handleDeleteService(deleteSlug!)}
+        confirmText="Delete"
       />
     </ContentLayout>
   );

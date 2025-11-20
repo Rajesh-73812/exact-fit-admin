@@ -9,7 +9,11 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { Tag, FileText, LocateIcon, ImagePlus, Activity, UploadIcon, Link as LinkIcon, DollarSign, Percent } from 'lucide-react';
+import {
+    Tag, FileText, LocateIcon, ImagePlus,
+    Activity, UploadIcon, Link as LinkIcon,
+    DollarSign, Percent
+} from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,64 +25,11 @@ import Loader from '@/components/utils/Loader';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-
-const uploadImageToS3 = async (file: File): Promise<string> => {
-    const BUCKET = process.env.NEXT_PUBLIC_S3_BUCKET!;
-    const REGION = process.env.NEXT_PUBLIC_S3_REGION!;
-    const ACCESS_KEY = process.env.NEXT_PUBLIC_S3_ACCESS_KEY!;
-    const SECRET_KEY = process.env.NEXT_PUBLIC_S3_SECRET_KEY!;
-
-    const s3 = new S3Client({
-        region: REGION,
-        credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET_KEY },
-    });
-
-    const fileName = `services/${Date.now()}-${file.name.replace(/\s+/g, '-').toLowerCase()}`;
-
-    const command = new PutObjectCommand({
-        Bucket: BUCKET,
-        Key: fileName,
-        Body: file,
-        ContentType: file.type,
-        ACL: 'public-read',
-    });
-
-    await s3.send(command);
-    return `https://${BUCKET}.s3.${REGION}.amazonaws.com/${fileName}`;
-};
+import { usePresignedUpload } from "@/hooks/usePresignedUpload";
 
 interface ParentService {
     id: string;
     title: string;
-}
-
-interface FormData {
-    title: string;
-    sub_service_slug: string;
-    service_id: string;
-    position: string;
-    image_alt: string;
-    status: 'active' | 'inactive';
-    description: string;
-    external_link: string;
-    discount: string;
-    price: string;
-    image_url: File | null;
-    existing_image_url: string | null;
-    hero_banner_file: File | null;
-    existing_hero_banner: string | null;
-}
-
-interface Errors {
-    title?: string;
-    service_id?: string;
-    position?: string;
-    description?: string;
-    image_url?: string;
-    hero_banner_file?: string;
-    discount?: string;
-    price?: string;
 }
 
 const SubServiceForm: React.FC = () => {
@@ -86,46 +37,58 @@ const SubServiceForm: React.FC = () => {
     const { slug } = useParams();
     const isEdit = !!slug && slug !== 'add';
 
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const [heroBannerPreview, setHeroBannerPreview] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [isImageEnlarged, setIsImageEnlarged] = useState(false);
-    const [parentServices, setParentServices] = useState<ParentService[]>([]);
-    const [errors, setErrors] = useState<Errors>({});
+    // Image Upload Hooks
+    const {
+        files: serviceImageFiles,
+        uploading: uploadingImage,
+        uploadFiles: uploadServiceImage,
+        removeFile: removeServiceImage,
+        getUploadedUrls: getServiceImageUrl,
+    } = usePresignedUpload("sub-services");
 
-    const [formData, setFormData] = useState<FormData>({
+    const {
+        files: heroFiles,
+        uploading: uploadingHero,
+        uploadFiles: uploadHeroImage,
+        removeFile: removeHeroImage,
+        getUploadedUrls: getHeroImageUrl,
+    } = usePresignedUpload("sub-service-hero-banners");
+
+    // Form State
+    const [isLoading, setIsLoading] = useState(false);
+    const [enlargedImageUrl, setEnlargedImageUrl] = useState<string | null>(null);
+    const [parentServices, setParentServices] = useState<ParentService[]>([]);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    const [formData, setFormData] = useState({
         title: '',
         sub_service_slug: '',
         service_id: '',
         position: '',
         image_alt: '',
-        status: 'active',
+        status: 'active' as 'active' | 'inactive',
         description: '',
         external_link: '',
         discount: '',
         price: '',
-        image_url: null,
-        existing_image_url: null,
-        hero_banner_file: null,
-        existing_hero_banner: null,
+        existing_image_url: null as string | null,
+        existing_hero_banner: null as string | null,
     });
 
+    // Load Parent Services + Edit Data
     useEffect(() => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
                 const { data: serviceRes } = await apiClient.get('/service/V1/get-all-service');
-                const loadedParents = serviceRes.data.map((s: any) => ({
-                    id: s.id,
-                    title: s.title,
-                }));
-                setParentServices(loadedParents);
+                setParentServices(serviceRes.data.map((s: any) => ({ id: s.id, title: s.title })));
 
                 if (isEdit && slug) {
                     const { data } = await apiClient.get(`/sub-service/V1/get-sub-service-by-slug/${slug}`);
                     const svc = data.data;
 
-                    setFormData({
+                    setFormData(prev => ({
+                        ...prev,
                         title: svc.title || '',
                         sub_service_slug: svc.sub_service_slug || '',
                         service_id: svc.service_id || '',
@@ -136,14 +99,9 @@ const SubServiceForm: React.FC = () => {
                         external_link: svc.external_link || '',
                         discount: svc.discount?.toString() || '',
                         price: svc.price?.toString() || '',
-                        image_url: null,
                         existing_image_url: svc.image_url || null,
-                        hero_banner_file: null,
                         existing_hero_banner: svc.hero_banner || null,
-                    });
-
-                    setImagePreview(svc.image_url || null);
-                    setHeroBannerPreview(svc.hero_banner || null);
+                    }));
                 }
             } catch (err) {
                 console.error('Failed to load data:', err);
@@ -151,65 +109,57 @@ const SubServiceForm: React.FC = () => {
                 setIsLoading(false);
             }
         };
-
         fetchData();
     }, [slug, isEdit]);
 
     const generateSlug = (title: string) =>
-        title
-            .toLowerCase()
-            .trim()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
+        title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 
-    // SLUG UPDATES ON BOTH CREATE AND EDIT
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
+        setFormData(prev => ({
             ...prev,
             [name]: value,
             ...(name === 'title' && { sub_service_slug: generateSlug(value) }),
         }));
-        setErrors((prev) => ({ ...prev, [name]: undefined }));
+        setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[name];
+            return newErrors;
+        });
     };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > 1024 * 1024) {
-            setErrors((prev) => ({ ...prev, image_url: 'Image must be ≤ 1 MB' }));
+        if (file.size > 5 * 1024 * 1024) {
+            setErrors(prev => ({ ...prev, image_url: "Image must be ≤ 5MB" }));
             return;
         }
-        setErrors((prev) => ({ ...prev, image_url: undefined }));
-        setFormData((prev) => ({ ...prev, image_url: file }));
-        const reader = new FileReader();
-        reader.onloadend = () => setImagePreview(reader.result as string);
-        reader.readAsDataURL(file);
+        uploadServiceImage([file]);
     };
 
     const handleHeroBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        if (file.size > 1024 * 1024) {
-            setErrors((prev) => ({ ...prev, hero_banner_file: 'Hero banner must be ≤ 1 MB' }));
+        if (file.size > 5 * 1024 * 1024) {
+            setErrors(prev => ({ ...prev, hero_banner: "Hero banner must be ≤ 5MB" }));
             return;
         }
-        setErrors((prev) => ({ ...prev, hero_banner_file: undefined }));
-        setFormData((prev) => ({ ...prev, hero_banner_file: file }));
-        const reader = new FileReader();
-        reader.onloadend = () => setHeroBannerPreview(reader.result as string);
-        reader.readAsDataURL(file);
+        uploadHeroImage([file]);
     };
 
-    const validateForm = (): boolean => {
-        const newErrors: Errors = {};
-        if (!formData.title) newErrors.title = 'Title is required';
-        else if (formData.title.length < 2) newErrors.title = 'Title too short';
+    const validateForm = () => {
+        const newErrors: Record<string, string> = {};
+        if (!formData.title.trim()) newErrors.title = 'Title is required';
         if (!formData.service_id) newErrors.service_id = 'Parent service is required';
-        if (formData.position && isNaN(Number(formData.position))) newErrors.position = 'Position must be a number';
-        if (formData.discount && isNaN(Number(formData.discount))) newErrors.discount = 'Discount must be a number';
-        if (formData.price && isNaN(Number(formData.price))) newErrors.price = 'Price must be a number';
-        if (formData.description && formData.description.length < 10) newErrors.description = 'Description too short';
+        if (formData.position && isNaN(Number(formData.position))) newErrors.position = 'Invalid position';
+        if (formData.price && isNaN(Number(formData.price))) newErrors.price = 'Invalid price';
+        if (formData.discount && (isNaN(Number(formData.discount)) || Number(formData.discount) > 100))
+            newErrors.discount = 'Invalid discount';
+        if (formData.description.trim().length < 10)
+            newErrors.description = 'Description must be at least 10 characters';
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -217,31 +167,27 @@ const SubServiceForm: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateForm()) return;
+        if (uploadingImage || uploadingHero) {
+            alert("Please wait for images to finish uploading");
+            return;
+        }
 
         setIsLoading(true);
         try {
-            let finalImageUrl: string | null = formData.existing_image_url;
-            if (formData.image_url) {
-                finalImageUrl = await uploadImageToS3(formData.image_url);
-            }
-
-            let finalHeroBannerUrl: string | null = formData.existing_hero_banner;
-            if (formData.hero_banner_file) {
-                finalHeroBannerUrl = await uploadImageToS3(formData.hero_banner_file);
-            }
+            const finalImageUrl = getServiceImageUrl()[0] || formData.existing_image_url;
+            const finalHeroBannerUrl = getHeroImageUrl()[0] || formData.existing_hero_banner;
 
             const payload = {
                 sub_service_slug: generateSlug(formData.title),
-                ...(isEdit && { old_sub_service_slug: slug as string }), // SEND OLD SLUG ON EDIT
-
+                ...(isEdit && { old_sub_service_slug: slug as string }),
                 service_id: formData.service_id,
                 title: formData.title.trim(),
                 position: formData.position ? Number(formData.position) : null,
-                description: formData.description || null,
-                image_url: finalImageUrl,
-                image_alt: formData.image_alt || null,
+                description: formData.description.trim() || null,
+                image_url: finalImageUrl || null,
+                image_alt: formData.image_alt.trim() || null,
                 status: formData.status,
-                external_link: formData.external_link || null,
+                external_link: formData.external_link.trim() || null,
                 discount: formData.discount ? Number(formData.discount) : null,
                 price: formData.price ? Number(formData.price) : null,
                 hero_banner: finalHeroBannerUrl || null,
@@ -256,294 +202,208 @@ const SubServiceForm: React.FC = () => {
         }
     };
 
-    // ──────────────────────── RENDER ────────────────────────
+    // Helper to get current image URL
+    const getImageUrl = (files: any[], existing: string | null) =>
+        files[0]?.uploadedUrl || files[0]?.preview || existing;
+
     return (
         <ContentLayout title={isEdit ? 'Edit Sub-Service' : 'Add Sub-Service'}>
             {isLoading && <Loader />}
 
             <Breadcrumb>
                 <BreadcrumbList>
-                    <BreadcrumbItem>
-                        <BreadcrumbLink asChild>
-                            <Link href="/dashboard">Dashboard</Link>
-                        </BreadcrumbLink>
-                    </BreadcrumbItem>
+                    <BreadcrumbItem><Link href="/dashboard">Dashboard</Link></BreadcrumbItem>
                     <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                        <BreadcrumbLink asChild>
-                            <Link href="/subservices">Sub Services</Link>
-                        </BreadcrumbLink>
-                    </BreadcrumbItem>
+                    <BreadcrumbItem><Link href="/subservices">Sub Services</Link></BreadcrumbItem>
                     <BreadcrumbSeparator />
-                    <BreadcrumbItem>
-                        <BreadcrumbPage>{isEdit ? 'Edit' : 'Add'}</BreadcrumbPage>
-                    </BreadcrumbItem>
+                    <BreadcrumbItem><BreadcrumbPage>{isEdit ? 'Edit' : 'Add'}</BreadcrumbPage></BreadcrumbItem>
                 </BreadcrumbList>
             </Breadcrumb>
 
-            <div className="mt-6">
-                <form onSubmit={handleSubmit}>
-                    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col lg:flex-row">
-                        {/* LEFT: FORM */}
-                        <div className="w-full lg:w-1/2 p-8 space-y-6">
-                            {/* Title */}
-                            <div>
-                                <Label className="flex items-center mb-2">
-                                    <Tag className="w-5 h-5 mr-2" />
-                                    Title <span className="text-red-500">*</span>
-                                </Label>
-                                <Input
-                                    name="title"
-                                    value={formData.title}
-                                    onChange={handleInputChange}
-                                    placeholder="Enter title"
-                                    className={errors.title ? 'border-red-500' : ''}
-                                />
-                                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
-                            </div>
+            <div className="mt-8 max-w-7xl mx-auto">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* LEFT: Form Fields */}
+                    <div className="space-y-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                        {/* Title */}
+                        <div>
+                            <Label className="flex items-center gap-2"><Tag className="w-5 h-5" /> Title <span className="text-red-500">*</span></Label>
+                            <Input name="title" value={formData.title} onChange={handleInputChange} placeholder="Enter title" />
+                            {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+                        </div>
 
-                            {/* Slug */}
-                            <div>
-                                <Label className="flex items-center mb-2">
-                                    <Tag className="w-5 h-5 mr-2" />
-                                    Slug {isEdit && '(auto-generated on create)'}
-                                </Label>
-                                <Input
-                                    name="sub_service_slug"
-                                    value={formData.sub_service_slug}
-                                    readOnly
-                                    className="bg-gray-100"
-                                />
-                            </div>
+                        {/* Slug */}
+                        <div>
+                            <Label>Slug</Label>
+                            <Input value={formData.sub_service_slug} readOnly className="bg-gray-100 font-mono" />
+                        </div>
 
-                            {/* Parent Service */}
-                            <div>
-                                <Label className="flex items-center mb-2">
-                                    <LinkIcon className="w-5 h-5 mr-2" />
-                                    Parent Service <span className="text-red-500">*</span>
-                                </Label>
-                                <Select value={formData.service_id} onValueChange={(v) => setFormData(prev => ({ ...prev, service_id: v }))}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select parent service" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {parentServices.map(s => (
-                                            <SelectItem key={s.id} value={s.id}>
-                                                {s.title}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {errors.service_id && <p className="text-red-500 text-sm mt-1">{errors.service_id}</p>}
-                            </div>
+                        {/* Parent Service */}
+                        <div>
+                            <Label className="flex items-center gap-2"><LinkIcon className="w-5 h-5" /> Parent Service <span className="text-red-500">*</span></Label>
+                            <Select value={formData.service_id} onValueChange={(v) => setFormData(prev => ({ ...prev, service_id: v }))}>
+                                <SelectTrigger><SelectValue placeholder="Select parent" /></SelectTrigger>
+                                <SelectContent>
+                                    {parentServices.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            {errors.service_id && <p className="text-red-500 text-sm mt-1">{errors.service_id}</p>}
+                        </div>
 
-                            {/* Position */}
+                        {/* Position, Price, Discount */}
+                        <div className="grid grid-cols-3 gap-4">
                             <div>
-                                <Label className="flex items-center mb-2">
-                                    <LocateIcon className="w-5 h-5 mr-2" />
-                                    Position
-                                </Label>
-                                <Input
-                                    type="number"
-                                    name="position"
-                                    value={formData.position}
-                                    onChange={handleInputChange}
-                                    min="0"
-                                    placeholder="0"
-                                />
-                                {errors.position && <p className="text-red-500 text-sm mt-1">{errors.position}</p>}
+                                <Label><LocateIcon className="w-5 h-5 inline mr-2" /> Position</Label>
+                                <Input type="number" name="position" value={formData.position} onChange={handleInputChange} placeholder="0" />
                             </div>
-
-                            {/* Price & Discount */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label className="flex items-center mb-2">
-                                        <DollarSign className="w-5 h-5 mr-2" />
-                                        Price
-                                    </Label>
-                                    <Input
-                                        type="number"
-                                        name="price"
-                                        value={formData.price}
-                                        onChange={handleInputChange}
-                                        step="0.01"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <div>
-                                    <Label className="flex items-center mb-2">
-                                        <Percent className="w-5 h-5 mr-2" />
-                                        Discount (%)
-                                    </Label>
-                                    <Input
-                                        type="number"
-                                        name="discount"
-                                        value={formData.discount}
-                                        onChange={handleInputChange}
-                                        min="0"
-                                        max="100"
-                                        placeholder="0"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Status */}
                             <div>
-                                <Label className="flex items-center mb-2">
-                                    <Activity className="w-5 h-5 mr-2" />
-                                    Status
-                                </Label>
-                                <Select value={formData.status} onValueChange={(v) => setFormData(prev => ({ ...prev, status: v as 'active' | 'inactive' }))}>
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="inactive">Inactive</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <Label><DollarSign className="w-5 h-5 inline mr-2" /> Price</Label>
+                                <Input type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} placeholder="0.00" />
                             </div>
-
-                            {/* External Link */}
                             <div>
-                                <Label className="flex items-center mb-2">
-                                    <LinkIcon className="w-5 h-5 mr-2" />
-                                    External Link
-                                </Label>
-                                <Input
-                                    name="external_link"
-                                    value={formData.external_link}
-                                    onChange={handleInputChange}
-                                    placeholder="https://..."
-                                />
-                            </div>
-
-                            {/* Image Alt */}
-                            <div>
-                                <Label className="flex items-center mb-2">
-                                    <ImagePlus className="w-5 h-5 mr-2" />
-                                    Image Alt Text
-                                </Label>
-                                <Input
-                                    name="image_alt"
-                                    value={formData.image_alt}
-                                    onChange={handleInputChange}
-                                    placeholder="Descriptive alt text"
-                                />
-                            </div>
-
-                            {/* Description */}
-                            <div>
-                                <Label className="flex items-center mb-2">
-                                    <FileText className="w-5 h-5 mr-2" />
-                                    Description
-                                </Label>
-                                <Textarea
-                                    name="description"
-                                    value={formData.description}
-                                    onChange={handleInputChange}
-                                    rows={4}
-                                    placeholder="Detailed description..."
-                                />
-                                {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+                                <Label><Percent className="w-5 h-5 inline mr-2" /> Discount %</Label>
+                                <Input type="number" name="discount" value={formData.discount} onChange={handleInputChange} min="0" max="100" placeholder="0" />
                             </div>
                         </div>
 
-                        {/* RIGHT: IMAGE */}
-                        <div className="w-full lg:w-1/2 p-8 flex flex-col justify-center space-y-8">
+                        <div>
+                            <Label><Activity className="w-5 h-5 inline mr-2" /> Status</Label>
+                            <Select value={formData.status} onValueChange={(v) => setFormData(prev => ({ ...prev, status: v as any }))}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                            {/* SUB-SERVICE IMAGE */}
-                            <div>
-                                <Label className="flex items-center mb-3 text-base font-medium">
-                                    <ImagePlus className="w-5 h-5 mr-2" />
-                                    Sub-Service Image
-                                </Label>
-                                <div className="relative h-80 border-2 border-dashed border-indigo-300 rounded-xl overflow-hidden">
-                                    {imagePreview ? (
-                                        <Image
-                                            src={imagePreview}
-                                            alt="Sub-service preview"
-                                            fill
-                                            className="object-contain cursor-pointer"
-                                            onClick={() => setIsImageEnlarged(true)}
-                                        />
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                                            <UploadIcon className="w-12 h-12 mb-3" />
-                                            <p className="font-medium">No Image</p>
-                                            <p className="text-sm">JPG, PNG ≤ 1MB</p>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="mt-4">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleImageChange}
-                                        className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                        <div>
+                            <Label><LinkIcon className="w-5 h-5 inline mr-2" /> External Link</Label>
+                            <Input name="external_link" value={formData.external_link} onChange={handleInputChange} placeholder="https://" />
+                        </div>
+
+                        <div>
+                            <Label><ImagePlus className="w-5 h-5 inline mr-2" /> Image Alt Text</Label>
+                            <Input name="image_alt" value={formData.image_alt} onChange={handleInputChange} placeholder="SEO alt text" />
+                        </div>
+
+                        <div>
+                            <Label><FileText className="w-5 h-5 inline mr-2" /> Description</Label>
+                            <Textarea name="description" value={formData.description} onChange={handleInputChange} rows={5} placeholder="Detailed description..." />
+                            {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+                        </div>
+                    </div>
+
+                    {/* RIGHT: Images */}
+                    <div className="space-y-8">
+                        {/* Sub-Service Image */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <Label className="text-lg font-semibold mb-4 block">Sub-Service Image</Label>
+                            <div
+                                className="relative h-80 border-2 border-dashed rounded-xl overflow-hidden cursor-pointer bg-gray-50"
+                                onClick={() => setEnlargedImageUrl(getImageUrl(serviceImageFiles, formData.existing_image_url))}
+                            >
+                                {getImageUrl(serviceImageFiles, formData.existing_image_url) ? (
+                                    <Image
+                                        src={getImageUrl(serviceImageFiles, formData.existing_image_url)!}
+                                        alt="Preview"
+                                        fill
+                                        className="object-contain hover:opacity-90 transition"
                                     />
-                                </div>
-                                {errors.image_url && <p className="text-red-500 text-sm mt-1">{errors.image_url}</p>}
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                                        <UploadIcon className="w-16 h-16 mb-4" />
+                                        <p className="font-medium">No Image Selected</p>
+                                        <p className="text-sm">JPG, PNG ≤ 5MB</p>
+                                    </div>
+                                )}
+                                {(uploadingImage) && (
+                                    <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-10">
+                                        <span className="text-white text-lg font-medium">Uploading...</span>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* HERO BANNER */}
-                            <div>
-                                <Label className="flex items-center mb-3 text-base font-medium">
-                                    <ImagePlus className="w-5 h-5 mr-2" />
-                                    Hero Banner
-                                </Label>
-                                <div className="relative h-80 border-2 border-dashed border-indigo-300 rounded-xl overflow-hidden">
-                                    {heroBannerPreview ? (
-                                        <Image
-                                            src={heroBannerPreview}
-                                            alt="Hero banner preview"
-                                            fill
-                                            className="object-contain cursor-pointer"
-                                            onClick={() => setIsImageEnlarged(true)}
-                                        />
-                                    ) : (
-                                        <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                                            <UploadIcon className="w-12 h-12 mb-3" />
-                                            <p className="font-medium">No Hero Banner</p>
-                                            <p className="text-sm">JPG, PNG ≤ 1MB</p>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="mt-4">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleHeroBannerChange}
-                                        className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                            <div className="mt-4 space-y-3">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageChange}
+                                    disabled={uploadingImage}
+                                    className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                                />
+                                {serviceImageFiles[0] && (
+                                    <Button type="button" size="sm" variant="destructive" onClick={() => removeServiceImage(0)}>
+                                        Remove Image
+                                    </Button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Hero Banner */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <Label className="text-lg font-semibold mb-4 block">Hero Banner</Label>
+                            <div
+                                className="relative h-80 border-2 border-dashed rounded-xl overflow-hidden cursor-pointer bg-gray-50"
+                                onClick={() => setEnlargedImageUrl(getImageUrl(heroFiles, formData.existing_hero_banner))}
+                            >
+                                {getImageUrl(heroFiles, formData.existing_hero_banner) ? (
+                                    <Image
+                                        src={getImageUrl(heroFiles, formData.existing_hero_banner)!}
+                                        alt="Hero preview"
+                                        fill
+                                        className="object-contain hover:opacity-90 transition"
                                     />
-                                </div>
-                                {errors.hero_banner_file && (
-                                    <p className="text-red-500 text-sm mt-1">{errors.hero_banner_file}</p>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                                        <UploadIcon className="w-16 h-16 mb-4" />
+                                        <p className="font-medium">No Hero Banner</p>
+                                        <p className="text-sm">JPG, PNG ≤ 5MB</p>
+                                    </div>
+                                )}
+                                {(uploadingHero) && (
+                                    <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-10">
+                                        <span className="text-white text-lg font-medium">Uploading...</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-4 space-y-3">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleHeroBannerChange}
+                                    disabled={uploadingHero}
+                                    className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                                />
+                                {heroFiles[0] && (
+                                    <Button type="button" size="sm" variant="destructive" onClick={() => removeHeroImage(0)}>
+                                        Remove Hero Banner
+                                    </Button>
                                 )}
                             </div>
                         </div>
                     </div>
-
-                    {/* BUTTONS */}
-                    <div className="flex justify-end gap-3 mt-8">
-                        <Button type="submit" disabled={isLoading} className="px-8">
-                            {isEdit ? 'Update' : 'Create'}
-                        </Button>
-                        <Button type="button" variant="outline" onClick={() => router.push('/subservices')} disabled={isLoading}>
-                            Cancel
-                        </Button>
-                    </div>
                 </form>
+
+                {/* Submit Buttons */}
+                <div className="mt-8 flex justify-end gap-4">
+                    <Button type="button" variant="outline" onClick={() => router.push('/subservices')}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" onClick={handleSubmit} disabled={isLoading || uploadingImage || uploadingHero} className="bg-indigo-600 hover:bg-indigo-700">
+                        {isLoading ? 'Saving...' : isEdit ? 'Update Sub-Service' : 'Create Sub-Service'}
+                    </Button>
+                </div>
             </div>
 
             {/* Enlarged Image Modal */}
-            {isImageEnlarged && imagePreview && (
-                <div className="fixed inset-0 z-50 bg-black bg-opacity-80 flex items-center justify-center p-4" onClick={() => setIsImageEnlarged(false)}>
-                    <div className="relative max-w-4xl w-full h-full">
-                        <Image src={imagePreview} alt="Enlarged" fill className="object-contain" />
+            {enlargedImageUrl && (
+                <div className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-8" onClick={() => setEnlargedImageUrl(null)}>
+                    <div className="relative max-w-6xl w-full h-full">
+                        <Image src={enlargedImageUrl} alt="Enlarged" fill className="object-contain" />
                         <button
-                            className="absolute top-4 right-4 bg-white text-black rounded-full w-10 h-10 flex items-center justify-center text-2xl font-bold"
-                            onClick={() => setIsImageEnlarged(false)}
+                            className="absolute top-4 right-4 bg-white text-black rounded-full w-12 h-12 flex items-center justify-center text-3xl font-bold hover:bg-gray-200"
+                            onClick={() => setEnlargedImageUrl(null)}
                         >
                             ×
                         </button>

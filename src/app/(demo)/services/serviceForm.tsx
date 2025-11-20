@@ -2,7 +2,7 @@
 
 import { ContentLayout } from '@/components/admin-panel/content-layout';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { Tag, FileText, LocateIcon, ImagePlus, Activity, UploadIcon } from 'lucide-react';
+import { Tag, FileText, LocateIcon, ImagePlus, Activity } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,8 @@ import Loader from '@/components/utils/Loader';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
+import { usePresignedUpload } from "@/hooks/usePresignedUpload";
+import { Trash2 } from 'lucide-react';
 
 const generateSlug = (title: string): string => {
   return title
@@ -31,7 +33,10 @@ export default function ServiceForm() {
   const isEdit = !!slug;
 
   const [loading, setLoading] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Presigned upload hook → single image mode (multiple = false by default)
+  const { files, uploading, uploadFiles, removeFile, getUploadedUrls } = usePresignedUpload("services");
+
   const [formData, setFormData] = useState({
     title: '',
     service_slug: '',
@@ -39,18 +44,17 @@ export default function ServiceForm() {
     image_alt: '',
     description: '',
     is_active: '1',
-    image_url: null as File | null,
-    existing_image_url: '',
+    existing_image_url: '', // only for edit mode
   });
 
-  // Auto-update slug when title changes
+  // Auto-update slug
   useEffect(() => {
     if (formData.title.trim()) {
       setFormData(prev => ({ ...prev, service_slug: generateSlug(prev.title) }));
     }
   }, [formData.title]);
 
-  // Load service in edit mode
+  // Load existing service
   useEffect(() => {
     if (!isEdit || !slug) return;
 
@@ -67,10 +71,8 @@ export default function ServiceForm() {
           image_alt: svc.image_alt || '',
           description: svc.description || '',
           is_active: svc.status === 'active' ? '1' : '0',
-          image_url: null,
           existing_image_url: svc.image_url || '',
         });
-        setImagePreview(svc.image_url || null);
       } catch (err) {
         alert('Failed to load service');
       } finally {
@@ -85,15 +87,12 @@ export default function ServiceForm() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 1024 * 1024) {
-      alert('Image must be ≤ 1MB');
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      alert('Image must be ≤ 5MB');
       return;
     }
 
-    setFormData(prev => ({ ...prev, image_url: file }));
-    const reader = new FileReader();
-    reader.onloadend = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
+    uploadFiles([file]); // ← Pass as array with 1 file (hook handles single mode)
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,26 +102,29 @@ export default function ServiceForm() {
       return;
     }
 
+    if (uploading) {
+      alert('Please wait for image to finish uploading');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let imageUrl = formData.existing_image_url;
-
-      if (formData.image_url) {
-        const uploadData = new FormData();
-        uploadData.append('image', formData.image_url);
-        const uploadRes = await apiClient.post('/upload-image', uploadData);
-        imageUrl = uploadRes.data.url;
-      }
-
+      const uploadedImageUrl = getUploadedUrls()[0]; // latest uploaded image
+      const finalImageUrl = uploadedImageUrl || formData.existing_image_url;
+      console.log("DEBUG UPLOAD STATE:", {
+        files,
+        uploadedUrls: getUploadedUrls(),
+        hasUploadedImage: !!getUploadedUrls()[0],
+        existingImage: formData.existing_image_url,
+      });
       const payload = {
         title: formData.title.trim(),
         service_slug: generateSlug(formData.title),
-        // This is the key: send old slug so backend knows which record to update
         ...(isEdit && { old_service_slug: slug as string }),
         position: formData.position ? Number(formData.position) : null,
         description: formData.description.trim(),
-        image_url: imageUrl,
+        image_url: finalImageUrl || null,
         image_alt: formData.image_alt.trim(),
         status: formData.is_active === '1' ? 'active' : 'inactive',
         external_link: '',
@@ -136,6 +138,13 @@ export default function ServiceForm() {
       setLoading(false);
     }
   };
+
+  // Show preview if uploading, otherwise show uploaded URL or existing
+  const currentImageUrl =
+    files[0]?.uploadedUrl ||           // ← Final uploaded S3 URL
+    (files[0]?.uploading ? files[0]?.preview : null) ||
+    formData.existing_image_url;
+
 
   return (
     <ContentLayout title={isEdit ? 'Edit Service' : 'Add Service'}>
@@ -154,7 +163,7 @@ export default function ServiceForm() {
       <div className="mt-8 max-w-6xl mx-auto">
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-          {/* Left: Form */}
+          {/* Left: Form Fields */}
           <div className="space-y-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
             <div>
               <Label className="flex items-center gap-2"><Tag className="w-5 h-5" /> Service Name <span className="text-red-500">*</span></Label>
@@ -212,35 +221,69 @@ export default function ServiceForm() {
             </div>
           </div>
 
-          {/* Right: Image */}
+          {/* Right: Image Upload */}
           <div className="space-y-6">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
               <h3 className="text-lg font-semibold mb-4">Service Image</h3>
-              <div className="border-2 border-dashed rounded-xl h-80 flex items-center justify-center overflow-hidden bg-gray-50">
-                {imagePreview ? (
-                  <Image src={imagePreview} alt="Preview" fill className="object-contain" />
+
+              {/* Fixed: Image stays perfectly inside the box */}
+              <div className="border-2 border-dashed border-gray-300 rounded-xl h-80 flex items-center justify-center bg-gray-50 relative overflow-hidden">
+                {currentImageUrl ? (
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={currentImageUrl}
+                      alt="Service preview"
+                      fill
+                      className="object-contain p-4"  // ← This is the magic line
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+                  </div>
                 ) : (
                   <div className="text-center">
-                    <UploadIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                    <div className="w-16 h-16 bg-gray-200 border-2 border-dashed rounded-xl mx-auto mb-4" />
                     <p className="text-gray-600">No image selected</p>
                   </div>
                 )}
+
+                {/* Upload Overlay */}
+                {files[0]?.uploading && (
+                  <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-10">
+                    <div className="text-white text-lg">Uploading...</div>
+                  </div>
+                )}
               </div>
+
+              {/* Remove button */}
+              {currentImageUrl && (
+                <div className="mt-3 text-right">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => removeFile(0)}
+                    disabled={uploading}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" /> Remove Image
+                  </Button>
+                </div>
+              )}
+
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
-                className="mt-4 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white"
+                disabled={uploading}
+                className="mt-4 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
               />
             </div>
           </div>
 
-          {/* Buttons */}
+          {/* Submit Buttons */}
           <div className="lg:col-span-2 flex justify-end gap-4">
             <Button type="button" variant="outline" onClick={() => router.push('/services')}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700">
+            <Button type="submit" disabled={loading || uploading} className="bg-indigo-600 hover:bg-indigo-700">
               {loading ? 'Saving...' : isEdit ? 'Update Service' : 'Create Service'}
             </Button>
           </div>
