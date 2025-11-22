@@ -3,7 +3,6 @@
 import uploadClient from "@/lib/uploadClient";
 import { useState } from "react";
 
-
 interface FileWithPreview {
   file: File;
   preview: string;
@@ -12,7 +11,10 @@ interface FileWithPreview {
   error?: string;
 }
 
-export const usePresignedUpload = (folder: string = "uploads", multiple: boolean = false) => {
+export const usePresignedUpload = (
+  folder: string = "uploads",
+  multiple: boolean = false
+) => {
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -20,21 +22,21 @@ export const usePresignedUpload = (folder: string = "uploads", multiple: boolean
     if (newFiles.length === 0) return;
 
     if (!multiple) {
-      setFiles(prev => {
-        prev.forEach(f => f.preview && URL.revokeObjectURL(f.preview));
+      setFiles((prev) => {
+        prev.forEach((f) => f.preview && URL.revokeObjectURL(f.preview));
         return [];
       });
     }
 
     setUploading(true);
 
-    const fileEntries: FileWithPreview[] = newFiles.map(file => ({
+    const fileEntries: FileWithPreview[] = newFiles.map((file) => ({
       file,
       preview: URL.createObjectURL(file),
       uploading: true,
     }));
 
-    setFiles(prev => multiple ? [...prev, ...fileEntries] : fileEntries);
+    setFiles((prev) => (multiple ? [...prev, ...fileEntries] : fileEntries));
 
     try {
       const uploadedUrls: string[] = [];
@@ -49,13 +51,16 @@ export const usePresignedUpload = (folder: string = "uploads", multiple: boolean
           folder,
         });
 
-        const { upuploadUrl, filePath } = res.data;
+        const { uploadUrl, filePath } = res.data;
 
         // 2. Upload to S3 (NO Content-Type header!)
-        await fetch(upuploadUrl, {
+        await fetch(uploadUrl, {
           method: "PUT",
           body: file,
-          // Remove Content-Type header → let presigned URL handle it
+          headers: {
+            // Force no content-type in request
+            "Content-Type": "",
+          },
         });
 
         // 3. Build public URL
@@ -67,9 +72,9 @@ export const usePresignedUpload = (folder: string = "uploads", multiple: boolean
       }
 
       // 4. Update state with real uploaded URLs
-      setFiles(prev =>
+      setFiles((prev) =>
         prev.map((f, idx) => {
-          const matchIdx = fileEntries.findIndex(fe => fe.file === f.file);
+          const matchIdx = fileEntries.findIndex((fe) => fe.file === f.file);
           if (matchIdx > -1) {
             return {
               ...f,
@@ -84,9 +89,9 @@ export const usePresignedUpload = (folder: string = "uploads", multiple: boolean
       return multiple ? uploadedUrls : uploadedUrls[0];
     } catch (err: any) {
       console.error("Upload failed:", err);
-      setFiles(prev =>
-        prev.map(f =>
-          fileEntries.some(fe => fe.file === f.file)
+      setFiles((prev) =>
+        prev.map((f) =>
+          fileEntries.some((fe) => fe.file === f.file)
             ? { ...f, uploading: false, error: "Upload failed" }
             : f
         )
@@ -98,16 +103,15 @@ export const usePresignedUpload = (folder: string = "uploads", multiple: boolean
   };
 
   const removeFile = (index: number) => {
-    setFiles(prev => {
+    setFiles((prev) => {
       const removed = prev[index];
       if (removed?.preview) URL.revokeObjectURL(removed.preview);
       return prev.filter((_, i) => i !== index);
     });
   };
 
-  const getUploadedUrls = () => files
-    .filter(f => f.uploadedUrl)
-    .map(f => f.uploadedUrl!);
+  const getUploadedUrls = () =>
+    files.filter((f) => f.uploadedUrl).map((f) => f.uploadedUrl!);
 
   return {
     files,
