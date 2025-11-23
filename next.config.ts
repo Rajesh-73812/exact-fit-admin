@@ -20,6 +20,19 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  async rewrites() {
+    return [
+      {
+        source: "/upload-image",
+        destination: "https://exact-fit-server.vercel.app/upload-image",
+      },
+      {
+        source: "/api/delete-image",
+        destination: "https://exact-fit-server.vercel.app/api/delete-image",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

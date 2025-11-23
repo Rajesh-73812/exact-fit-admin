@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import {
   Tag, Mail, Phone, MapPin, Home, FileText, Upload,
-  Briefcase, Activity, Building2
+  Briefcase, Activity, Building2, Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import apiClient from '@/lib/apiClient';   // <-- direct import
+import apiClient from '@/lib/apiClient';
+import { usePresignedUpload } from "@/hooks/usePresignedUpload";
 import { toast } from 'sonner';
+import router from 'next/router';
+import { add } from 'lodash';
 
 interface FormData {
   id?: string;
@@ -43,26 +46,24 @@ interface FormData {
   services_known: string;
   service_type: 'general' | 'emergency';
   description: string;
-  profile_pic: File | null;
-  id_proof: File | null;
+  // Now storing URLs instead of File objects
+  profile_pic?: string;
+  id_proofs?: string;
+  // Keep existing URLs for edit mode
+  existing_profile_pic?: string;
+  existing_id_proofs?: string;
 }
 
 interface Errors {
   [key: string]: string | undefined;
 }
 
-interface TechnicianFormProps {
-  readOnly?: boolean;
-}
-
-const TechnicianForm: React.FC<TechnicianFormProps> = ({ readOnly = false }) => {
+const TechnicianForm = ({ readOnly = false }: { readOnly?: boolean }) => {
   const router = useRouter();
   const { id } = useParams() as { id?: string };
   const isEdit = !!id && !readOnly;
   const isView = !!id && readOnly;
 
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [idProofPreview, setIdProofPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     service_category: '',
@@ -78,13 +79,20 @@ const TechnicianForm: React.FC<TechnicianFormProps> = ({ readOnly = false }) => 
     services_known: '',
     service_type: 'general',
     description: '',
-    profile_pic: null,
-    id_proof: null,
+    profile_pic: '',
+    id_proofs: '',
+    existing_profile_pic: '',
+    existing_id_proofs: '',
   });
+
   const [errors, setErrors] = useState<Errors>({});
 
+  // Two separate uploaders
+  const profileUpload = usePresignedUpload("technicians/profile", false);
+  const idProofUpload = usePresignedUpload("technicians/id-proof", false);
+
   /* -------------------------------------------------
-   *  Load technician (Edit / View)
+   *  Load technician on edit/view
    * ------------------------------------------------- */
   useEffect(() => {
     if (!id) return;
@@ -92,33 +100,32 @@ const TechnicianForm: React.FC<TechnicianFormProps> = ({ readOnly = false }) => 
     const load = async () => {
       try {
         setLoading(true);
-        const res = await apiClient.get(`/technicians/${id}`);   // <-- direct
+        const res = await apiClient.get(`/technicians/${id}`);
         const tech = res.data.data;
         const addr = tech.addresses?.[0] ?? {};
 
         setFormData({
           id: tech.id,
-          fullname: tech.fullname,
-          email: tech.email,
-          mobile: tech.mobile,
-          service_category: tech.service_category ?? '',
-          services_known: tech.services_known ?? '',
-          service_type: tech.service_type ?? 'general',
-          description: tech.description ?? '',
-          id_proof_type: tech.id_proof_type ?? '',
-          emirate: addr.emirate ?? '',
-          area: addr.area ?? '',
-          appartment: addr.appartment ?? '',
-          addtional_address: addr.addtional_address ?? '',
-          location: addr.location ?? '',
-          latitude: addr.latitude ?? '',
-          longitude: addr.longitude ?? '',
-          profile_pic: null,
-          id_proof: null,
+          fullname: tech.fullname || '',
+          email: tech.email || '',
+          mobile: tech.mobile || '',
+          service_category: tech.service_category || '',
+          services_known: tech.services_known || '',
+          service_type: tech.service_type || 'general',
+          description: tech.description || '',
+          id_proof_type: tech.id_proof_type || '',
+          emirate: addr.emirate || '',
+          area: addr.area || '',
+          appartment: addr.appartment || '',
+          addtional_address: addr.addtional_address || '',
+          location: addr.location || '',
+          latitude: addr.latitude || '',
+          longitude: addr.longitude || '',
+          existing_profile_pic: tech.profile_pic || '',
+          existing_id_proofs: tech.id_proofs || '',
+          profile_pic: tech.profile_pic || '',
+          id_proofs: tech.id_proofs || '',
         });
-
-        if (tech.profile_pic) setImagePreview(tech.profile_pic);
-        if (tech.id_proofs) setIdProofPreview(tech.id_proofs);
       } catch {
         toast.error('Failed to load technician');
         router.replace('/technicians');
@@ -129,9 +136,6 @@ const TechnicianForm: React.FC<TechnicianFormProps> = ({ readOnly = false }) => 
     load();
   }, [id, router]);
 
-  /* -------------------------------------------------
-   *  Input / File handlers
-   * ------------------------------------------------- */
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (readOnly) return;
     const { name, value } = e.target;
@@ -139,20 +143,24 @@ const TechnicianForm: React.FC<TechnicianFormProps> = ({ readOnly = false }) => 
     setErrors(p => ({ ...p, [name]: undefined }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'profile_pic' | 'id_proof') => {
-    if (readOnly) return;
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      toast.error(`${type === 'profile_pic' ? 'Profile' : 'ID proof'} must be ≤ 2MB`);
+      toast.error('Profile picture must be ≤ 2MB');
       return;
     }
-    setFormData(p => ({ ...p, [type]: file }));
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      type === 'profile_pic' ? setImagePreview(reader.result as string) : setIdProofPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    profileUpload.uploadFiles([file]);
+  };
+
+  const handleIdProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('ID proof must be ≤ 5MB');
+      return;
+    }
+    idProofUpload.uploadFiles([file]);
   };
 
   /* -------------------------------------------------
@@ -160,46 +168,65 @@ const TechnicianForm: React.FC<TechnicianFormProps> = ({ readOnly = false }) => 
    * ------------------------------------------------- */
   const validate = () => {
     const err: Errors = {};
-    if (!formData.fullname) err.fullname = 'Full name is required';
-    if (!formData.email) err.email = 'Email is required';
-    if (!formData.mobile) err.mobile = 'Mobile is required';
-    if (!formData.service_category) err.service_category = 'Service category is required';
-    if (!formData.emirate) err.emirate = 'Emirate is required';
-    if (!formData.area) err.area = 'Area is required';
+    if (!formData.fullname.trim()) err.fullname = 'Full name is required';
+    if (!formData.email.trim()) err.email = 'Email is required';
+    if (!formData.mobile.trim()) err.mobile = 'Mobile is required';
+    if (!formData.service_category.trim()) err.service_category = 'Service category is required';
+    if (!formData.emirate.trim()) err.emirate = 'Emirate is required';
+    if (!formData.area.trim()) err.area = 'Area is required';
     setErrors(err);
     return Object.keys(err).length === 0;
   };
 
   /* -------------------------------------------------
-   *  Submit (Create / Update)
+   *  Submit – Now sends only URLs
    * ------------------------------------------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly) return;
     if (!validate()) return;
 
+    if (profileUpload.uploading || idProofUpload.uploading) {
+      toast.error('Please wait for uploads to complete');
+      return;
+    }
+
     setLoading(true);
-    const payload = new FormData();
-    Object.entries(formData).forEach(([k, v]) => {
-      if (v !== null && v !== undefined) payload.append(k, v as any);
-    });
+
+    const finalProfilePic = profileUpload.getUploadedUrls()[0] || formData.existing_profile_pic;
+    const finalIdProof = idProofUpload.getUploadedUrls()[0] || formData.existing_id_proofs;
+
+    const payload = {
+      ...formData,
+      profile_pic: finalProfilePic || null,
+      id_proofs: finalIdProof || null,
+      // Remove file objects and existing_* fields
+    };
+
+    // Remove temporary fields
+    delete (payload as any).existing_profile_pic;
+    delete (payload as any).existing_id_proofs;
 
     try {
-      await apiClient.post('/technicians/upsert-technician', payload, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });   // <-- direct
-      toast.success(isEdit ? 'Technician updated' : 'Technician created');
+      await apiClient.post('/technicians/upsert-technician', payload);
+      toast.success(isEdit ? 'Technician updated successfully' : 'Technician created successfully');
       router.push('/technicians');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Save failed');
+      toast.error(err.response?.data?.message || 'Failed to save technician');
     } finally {
       setLoading(false);
     }
   };
 
-  /* -------------------------------------------------
-   *  Render
-   * ------------------------------------------------- */
+  // Helper to get current display URL
+  const currentProfileUrl = profileUpload.files[0]?.uploadedUrl ||
+    (profileUpload.files[0]?.uploading ? profileUpload.files[0]?.preview : null) ||
+    formData.existing_profile_pic;
+
+  const currentIdProofUrl = idProofUpload.files[0]?.uploadedUrl ||
+    (idProofUpload.files[0]?.uploading ? idProofUpload.files[0]?.preview : null) ||
+    formData.existing_id_proofs;
+
   return (
     <ContentLayout title={
       isView ? `View Technician: ${formData.fullname}` :
@@ -207,262 +234,138 @@ const TechnicianForm: React.FC<TechnicianFormProps> = ({ readOnly = false }) => 
     }>
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem><BreadcrumbLink asChild><Link href="/dashboard">Dashboard</Link></BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbItem><Link href="/dashboard">Dashboard</Link></BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbLink asChild><Link href="/technicians">Technicians</Link></BreadcrumbLink></BreadcrumbItem>
+          <BreadcrumbItem><Link href="/technicians">Technicians</Link></BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem><BreadcrumbPage>
-            {isView ? 'View' : isEdit ? 'Edit' : 'Add'}
-          </BreadcrumbPage></BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbPage>{isView ? 'View' : isEdit ? 'Edit' : 'Add'}</BreadcrumbPage></BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <form onSubmit={handleSubmit} className="mt-6">
         <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 flex flex-col lg:flex-row">
-          {/* ---------- LEFT – INPUTS ---------- */}
-          <div className="w-full lg:w-1/2 p-8 space-y-6 bg-gradient-to-br from-gray-50 to-white dark:from-gray-700 dark:to-gray-800">
-            {/* Service Category */}
-            <div>
-              <Label><Briefcase className="w-5 h-5 mr-2 text-indigo-600" />Service Category *</Label>
-              <Input
-                name="service_category"
-                value={formData.service_category}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                required={!readOnly}
-                placeholder={readOnly ? '-' : 'e.g. Plumbing'}
-              />
-              {errors.service_category && <p className="text-red-500 text-sm">{errors.service_category}</p>}
-            </div>
-
-            {/* Full Name */}
-            <div>
-              <Label><Tag className="w-5 h-5 mr-2 text-indigo-600" />Full Name *</Label>
-              <Input
-                name="fullname"
-                value={formData.fullname}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                required={!readOnly}
-              />
-              {errors.fullname && <p className="text-red-500 text-sm">{errors.fullname}</p>}
-            </div>
-
-            {/* Email */}
-            <div>
-              <Label><Mail className="w-5 h-5 mr-2 text-indigo-600" />Email *</Label>
-              <Input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                required={!readOnly}
-              />
-              {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
-            </div>
-
-            {/* Mobile */}
-            <div>
-              <Label><Phone className="w-5 h-5 mr-2 text-indigo-600" />Mobile *</Label>
-              <Input
-                name="mobile"
-                value={formData.mobile}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                required={!readOnly}
-              />
-              {errors.mobile && <p className="text-red-500 text-sm">{errors.mobile}</p>}
-            </div>
-
-            {/* Emirate */}
-            <div>
-              <Label><MapPin className="w-5 h-5 mr-2 text-indigo-600" />Emirate *</Label>
-              <Input
-                name="emirate"
-                value={formData.emirate}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                required={!readOnly}
-              />
-              {errors.emirate && <p className="text-red-500 text-sm">{errors.emirate}</p>}
-            </div>
-
-            {/* Area */}
-            <div>
-              <Label>Area *</Label>
-              <Input
-                name="area"
-                value={formData.area}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                required={!readOnly}
-              />
-              {errors.area && <p className="text-red-500 text-sm">{errors.area}</p>}
-            </div>
-
-            {/* Building / Apartment */}
-            <div>
-              <Label><Building2 className="w-5 h-5 mr-2 text-indigo-600" />Building / Apartment</Label>
-              <Input
-                name="appartment"
-                value={formData.appartment}
-                onChange={handleInputChange}
-                disabled={readOnly}
-              />
-            </div>
-
-            {/* Additional Address */}
-            <div>
-              <Label><Home className="w-5 h-5 mr-2 text-indigo-600" />Additional Address</Label>
-              <Textarea
-                name="addtional_address"
-                value={formData.addtional_address}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                rows={2}
-              />
-            </div>
-
-            {/* Location (Google Maps) */}
-            <div>
-              <Label>Location (Google Maps)</Label>
-              <Input
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                disabled={readOnly}
-              />
-            </div>
-
-            {/* ID Proof Type */}
-            <div>
-              <Label>ID Proof Type</Label>
-              <Input
-                name="id_proof_type"
-                value={formData.id_proof_type}
-                onChange={handleInputChange}
-                disabled={readOnly}
-              />
-            </div>
-
-            {/* Service Type */}
-            <div>
-              <Label><Activity className="w-5 h-5 mr-2 text-indigo-600" />Service Type *</Label>
-              <Select
-                value={formData.service_type}
-                onValueChange={v => !readOnly && setFormData(p => ({ ...p, service_type: v as any }))}
-                disabled={readOnly}
-              >
-                <SelectTrigger><SelectValue placeholder="Select service type" /></SelectTrigger>
+          {/* LEFT – FORM FIELDS */}
+          <div className="w-full lg:w-1/2 p-8 space-y-6">
+            {/* All your existing input fields... (same as before) */}
+            <div><Label><Briefcase className="w-5 h-5 mr-2" />Service Category *</Label><Input name="service_category" value={formData.service_category} onChange={handleInputChange} disabled={readOnly} required /></div>
+            <div><Label><Tag className="w-5 h-5 mr-2" />Full Name *</Label><Input name="fullname" value={formData.fullname} onChange={handleInputChange} disabled={readOnly} required /></div>
+            <div><Label><Mail className="w-5 h-5 mr-2" />Email *</Label><Input type="email" name="email" value={formData.email} onChange={handleInputChange} disabled={readOnly} required /></div>
+            <div><Label><Phone className="w-5 h-5 mr-2" />Mobile *</Label><Input name="mobile" value={formData.mobile} onChange={handleInputChange} disabled={readOnly} required /></div>
+            <div><Label><MapPin className="w-5 h-5 mr-2" />Emirate *</Label><Input name="emirate" value={formData.emirate} onChange={handleInputChange} disabled={readOnly} required /></div>
+            <div><Label>Area *</Label><Input name="area" value={formData.area} onChange={handleInputChange} disabled={readOnly} required /></div>
+            <div><Label><Building2 className="w-5 h-5 mr-2" />Building / Apartment</Label><Input name="appartment" value={formData.appartment} onChange={handleInputChange} disabled={readOnly} /></div>
+            <div><Label><Home className="w-5 h-5 mr-2" />Additional Address</Label><Textarea name="addtional_address" value={formData.addtional_address} onChange={handleInputChange} disabled={readOnly} /></div>
+            <div><Label>Location</Label><Input name="location" value={formData.location} onChange={handleInputChange} disabled={readOnly} /></div>
+            <div><Label>ID Proof Type</Label><Input name="id_proof_type" value={formData.id_proof_type} onChange={handleInputChange} disabled={readOnly} /></div>
+            <div><Label><Activity className="w-5 h-5 mr-2" />Service Type</Label>
+              <Select value={formData.service_type} onValueChange={v => setFormData(p => ({ ...p, service_type: v as any }))} disabled={readOnly}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="general">General</SelectItem>
                   <SelectItem value="emergency">Emergency</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Services Known */}
-            <div>
-              <Label>Services Known</Label>
-              <Textarea
-                name="services_known"
-                value={formData.services_known}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                rows={2}
-                placeholder={readOnly ? '-' : 'Pipe fixing, Tap installation...'}
-              />
-            </div>
-
-            {/* Description */}
-            <div>
-              <Label>Description</Label>
-              <Textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                disabled={readOnly}
-                rows={3}
-                placeholder={readOnly ? '-' : '5+ years experience...'}
-              />
-            </div>
+            <div><Label>Services Known</Label><Textarea name="services_known" value={formData.services_known} onChange={handleInputChange} disabled={readOnly} rows={3} /></div>
+            <div><Label>Description</Label><Textarea name="description" value={formData.description} onChange={handleInputChange} disabled={readOnly} rows={4} /></div>
           </div>
 
-          {/* ---------- RIGHT – UPLOADS ---------- */}
-          <div className="w-full lg:w-1/2 p-8 bg-white dark:bg-gray-800 space-y-8">
+          {/* RIGHT – UPLOADS */}
+          <div className="w-full lg:w-1/2 p-8 space-y-8 bg-gray-50 dark:bg-gray-900">
             {/* Profile Picture */}
             <div>
-              <Label><Upload className="w-5 h-5 mr-2 text-indigo-600" />Profile Picture</Label>
-              <div className="border-2 border-dashed rounded-xl p-4">
-                {imagePreview ? (
-                  <div className="relative h-64 w-full rounded-lg overflow-hidden">
-                    <Image src={imagePreview} alt="Profile" fill className="object-cover" unoptimized />
-                  </div>
+              <Label><Upload className="w-5 h-5 mr-2" />Profile Picture</Label>
+              <div className="border-2 border-dashed rounded-xl p-6 min-h-80 flex flex-col items-center justify-center relative bg-white">
+                {currentProfileUrl ? (
+                  <>
+                    <Image src={currentProfileUrl} alt="Profile" fill className="object-contain rounded-lg" />
+                    {profileUpload.uploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white">Uploading...</div>}
+                  </>
                 ) : (
-                  <div className="text-center py-12">
-                    <Upload className="w-10 h-10 mx-auto text-gray-400" />
-                    <p className="text-sm text-gray-500 mt-2">{readOnly ? 'No image' : 'JPG, PNG ≤ 2MB'}</p>
+                  <div className="text-center text-gray-500">
+                    <Upload className="w-16 h-16 mx-auto mb-4" />
+                    <p>No profile picture</p>
                   </div>
                 )}
-                {!readOnly && (
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={e => handleFileChange(e, 'profile_pic')}
-                    className="mt-3 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-indigo-50 file:text-indigo-700"
-                  />
+                {currentProfileUrl && !readOnly && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="absolute top-4 right-4 z-10"
+                    onClick={() => profileUpload.removeFile(0)}
+                    disabled={profileUpload.uploading}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
+              {!readOnly && (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfileChange}
+                  disabled={profileUpload.uploading}
+                  className="mt-4 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white"
+                />
+              )}
             </div>
 
             {/* ID Proof */}
             <div>
-              <Label><FileText className="w-5 h-5 mr-2 text-indigo-600" />ID Proof</Label>
-              <div className="border-2 border-dashed rounded-xl p-4">
-                {idProofPreview ? (
-                  <div className="relative h-64 w-full rounded-lg overflow-hidden bg-gray-100">
-                    {idProofPreview.endsWith('.pdf') ? (
-                      <a href={idProofPreview} target="_blank" className="flex h-full items-center justify-center text-blue-600">
-                        <FileText className="w-12 h-12" /> View PDF
-                      </a>
-                    ) : (
-                      <Image src={idProofPreview} alt="ID" fill className="object-contain" />
-                    )}
-                  </div>
+              <Label><FileText className="w-5 h-5 mr-2" />ID Proof (Image/PDF)</Label>
+              <div className="border-2 border-dashed rounded-xl p-6 min-h-80 flex flex-col items-center justify-center relative bg-white">
+                {currentIdProofUrl ? (
+                  currentIdProofUrl.endsWith('.pdf') ? (
+                    <div className="text-center">
+                      <FileText className="w-16 h-16 text-red-600 mb-4" />
+                      <p className="text-sm">PDF Uploaded</p>
+                    </div>
+                  ) : (
+                    <Image src={currentIdProofUrl} alt="ID Proof" fill className="object-contain rounded-lg" />
+                  )
                 ) : (
-                  <div className="text-center py-12">
-                    <FileText className="w-10 h-10 mx-auto text-gray-400" />
-                    <p className="text-sm text-gray-500 mt-2">{readOnly ? 'No document' : 'PDF, JPG, PNG ≤ 2MB'}</p>
+                  <div className="text-center text-gray-500">
+                    <FileText className="w-16 h-16 mx-auto mb-4" />
+                    <p>No ID proof uploaded</p>
                   </div>
                 )}
-                {!readOnly && (
-                  <input
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={e => handleFileChange(e, 'id_proof')}
-                    className="mt-3 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-indigo-50 file:text-indigo-700"
-                  />
+                {idProofUpload.uploading && <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white">Uploading...</div>}
+                {currentIdProofUrl && !readOnly && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="destructive"
+                    className="absolute top-4 right-4 z-10"
+                    onClick={() => idProofUpload.removeFile(0)}
+                    disabled={idProofUpload.uploading}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 )}
               </div>
+              {!readOnly && (
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleIdProofChange}
+                  disabled={idProofUpload.uploading}
+                  className="mt-4 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white"
+                />
+              )}
             </div>
           </div>
         </div>
 
-        {/* ---------- BUTTONS ---------- */}
-        <div className="flex justify-end mt-6 space-x-4">
+        {/* Buttons */}
+        <div className="flex justify-end mt-8 gap-4">
           {!readOnly && (
-            <Button type="submit" disabled={loading} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700">
-              {loading ? 'Saving...' : isEdit ? 'Update' : 'Create'} Technician
+            <Button type="submit" disabled={loading || profileUpload.uploading || idProofUpload.uploading} className="bg-indigo-600 hover:bg-indigo-700">
+              {loading ? 'Saving...' : isEdit ? 'Update Technician' : 'Create Technician'}
             </Button>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push('/technicians')}
-            className="px-6 py-3"
-          >
-            {readOnly ? 'Back to List' : 'Cancel'}
+          <Button type="button" variant="outline" onClick={() => router.push('/technicians')}>
+            {readOnly ? 'Back' : 'Cancel'}
           </Button>
         </div>
       </form>
