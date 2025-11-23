@@ -1,4 +1,4 @@
-import { Tag, Users, Settings, Bookmark, SquarePen, LayoutGrid, LucideIcon, BookmarkMinus, Box, Image,UserCog  } from "lucide-react";
+import { Tag, Users, Settings, Bookmark, SquarePen, LayoutGrid, LucideIcon, BookmarkMinus, Box, Image,UserCog, IndianRupee  } from "lucide-react";
 
 type Submenu = {
   href: string;
@@ -46,11 +46,6 @@ export function getMenuList(pathname: string): Group[] {
           label: "Sub Services",
           icon: BookmarkMinus
         },
-        // {
-        //   href: "/products/list",
-        //   label: "Services",
-        //   icon: Box
-        // },
         {
           href: "/banners/list",
           label: "Banners",
@@ -66,6 +61,16 @@ export function getMenuList(pathname: string): Group[] {
           label: "Customers",
           icon: Users
         }   
+      ]
+    },
+    {
+      groupLabel: "Business",
+      menus: [
+        {
+          href: "/plans",
+          label: "Plans",
+          icon: IndianRupee
+        }
       ]
     },
     {
