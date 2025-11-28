@@ -63,6 +63,7 @@ const getRowId = (item: any): string => {
   if (item._id != null) return String(item._id);
   // 3. slug
   if (item.service_slug != null) return String(item.service_slug);
+  if (item.slug != null) return String(item.slug);
   // 4. fallback – title (rare)
   if (item.title != null) return String(item.title);
   return '';
@@ -136,6 +137,7 @@ export default function ListComponent({
   const isBookingPage = pathName === '/bookings/list';
   const isVendorsPage = pathName === '/vendors' || pathName === '/vendors/list';
   const isContactUsPage = pathName === '/contactus' || pathName === '/contactus/list';
+  const isPlanPage = pathName === '/plans' || pathName === '/plans/list';
   const isReviewPage = pathName === '/reviews' || pathName === '/reviews/list';
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -448,7 +450,7 @@ export default function ListComponent({
                           {/* View */}
                           {title !== 'Transaction' &&
                             title !== 'Notifications' &&
-                            viewRoute && (
+                            viewRoute && !isPlanPage &&(
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button

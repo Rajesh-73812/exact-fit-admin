@@ -57,10 +57,6 @@ export const usePresignedUpload = (
         await fetch(uploadUrl, {
           method: "PUT",
           body: file,
-          headers: {
-            // Force no content-type in request
-            "Content-Type": "",
-          },
         });
 
         // 3. Build public URL

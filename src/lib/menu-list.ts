@@ -70,6 +70,11 @@ export function getMenuList(pathname: string): Group[] {
           href: "/plans",
           label: "Plans",
           icon: IndianRupee
+        },
+        {
+          href: "/property",
+          label: "Property",
+          icon: IndianRupee
         }
       ]
     },
