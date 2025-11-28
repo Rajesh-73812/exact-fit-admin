@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
+import 'primereact/resources/themes/lara-light-indigo/theme.css';
+import 'primereact/resources/primereact.min.css';
+import 'primeicons/primeicons.css';
 
 import { ThemeProvider } from "@/components/providers/theme-provider";
 

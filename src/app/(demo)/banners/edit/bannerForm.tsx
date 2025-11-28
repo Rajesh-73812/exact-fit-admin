@@ -66,7 +66,7 @@ export default function BannerForm() {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await apiClient.get(`/admin/V1/get-banner-by-id/${id}`);
+        const res = await apiClient.get(`/V1/get-banner-by-id/${id}`);
         const b = res.data.data;
 
         setFormData({
