@@ -59,8 +59,6 @@ interface CustomToggleConfig {
 const getRowId = (item: any): string => {
   // 1. explicit `id` (string/number)
   if (item.id != null) return String(item.id);
-  // 2. explicit `_id` (Mongo)
-  if (item._id != null) return String(item._id);
   // 3. slug
   if (item.service_slug != null) return String(item.service_slug);
   if (item.slug != null) return String(item.slug);
@@ -138,7 +136,7 @@ export default function ListComponent({
   const isVendorsPage = pathName === '/vendors' || pathName === '/vendors/list';
   const isContactUsPage = pathName === '/contactus' || pathName === '/contactus/list';
   const isPlanPage = pathName === '/plans' || pathName === '/plans/list';
-  const isReviewPage = pathName === '/reviews' || pathName === '/reviews/list';
+  const isCustomers = pathName === '/customers' || pathName === '/customers/list';
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
@@ -173,7 +171,7 @@ export default function ListComponent({
 
   /* ---------- Delete ---------- */
   const handleDelete = async (id: string) => {
-  
+
     try {
       setDeletingId(id);
       if (onDelete) {
@@ -432,8 +430,8 @@ export default function ListComponent({
                             ) : (
                               <span
                                 className={`inline-flex items-center rounded-full text-xs font-medium px-3 py-1 ${item[approvalField] === 'approved'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-red-100 text-red-800'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
                                   }`}
                               >
                                 {item[approvalField] === 'approved'
@@ -450,7 +448,7 @@ export default function ListComponent({
                           {/* View */}
                           {title !== 'Transaction' &&
                             title !== 'Notifications' &&
-                            viewRoute && !isPlanPage &&(
+                            viewRoute && !isPlanPage && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -467,7 +465,7 @@ export default function ListComponent({
                             )}
 
                           {/* Edit */}
-                          {!isReviewPage &&
+                          {!isCustomers &&
                             !isContactUsPage &&
                             title !== 'Transaction' &&
                             item.status !== 'cancelled' &&

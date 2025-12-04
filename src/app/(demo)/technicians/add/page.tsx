@@ -1,4 +1,4 @@
-import TechnicianForm from '../edit/technicianForm';
+import TechnicianForm from '../technicianForm';
 export default function NewTechnicianPage() {
   return <TechnicianForm />;
 }

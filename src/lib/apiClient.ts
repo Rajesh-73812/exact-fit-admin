@@ -8,8 +8,8 @@ import { getToken } from './getToken';
 
 
 const apiClient: AxiosInstance = axios.create({
-  // baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4446/api/admin",
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "https://exact-fit-server.vercel.app/api/admin",
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4446/api/admin",
+  // baseURL: process.env.NEXT_PUBLIC_API_URL || "https://exact-fit-server.vercel.app/api/admin",
   timeout: 30000,
   // headers: {
   //   'Content-Type': 'application/json',
@@ -35,7 +35,7 @@ apiClient.interceptors.response.use(
   (error: AxiosError) => {
     if (error.response) {
       const { status, data } = error.response;
-      console.error('Response error:', { status, data }); // Debug log
+      // console.error('Response error:', { status, data }); // Debug log
     //   if (status === 401) {
     //     console.log('Unauthorized, clearing token and redirecting'); // Debug log
     //     localStorage.removeItem('token');
