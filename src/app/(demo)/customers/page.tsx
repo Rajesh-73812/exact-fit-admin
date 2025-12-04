@@ -1,53 +1,121 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Users, UserCheck, Calendar, Clock } from 'lucide-react';
+import { Users, UserCheck, UserX, Clock } from 'lucide-react';
 import ListComponent from '@/components/ListComponent';
+import CustomModal from '@/components/CustomModal';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
-import { mockCustomers } from '@/data/mockCustomers';
 import { Badge } from '@/components/ui/badge';
+import apiClient from '@/lib/apiClient';
+import { toast } from 'sonner';
+
+interface Customer {
+  id: string;
+  fullname: string | null;
+  email: string | null;
+  mobile: string;
+  is_active: boolean;
+  plan_start_date?: string;
+  plan_end_date?: string;
+}
+
+interface ApiResponse {
+  success: boolean;
+  message: string;
+  data: {
+    rows: Customer[];
+    count: number;
+    activeCount: number;
+    deactiveCount: number;
+  };
+}
 
 export default function CustomersPage() {
-  // const router = useRouter();
-  const [search, setSearch] = useState('');
+  const router = useRouter();
+
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [activeCount, setActiveCount] = useState(0);
+  const [inactiveCount, setInactiveCount] = useState(0);
+
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const filtered = mockCustomers.filter(c =>
-    c.fullname.toLowerCase().includes(search.toLowerCase()) ||
-    c.email.toLowerCase().includes(search.toLowerCase()) ||
-    c.mobile.includes(search)
-  );
+  // Modal state
+  const [statusModal, setStatusModal] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>('');
 
-  const paginated = filtered.slice((page - 1) * limit, page * limit);
-  const total = filtered.length;
+  // Fetch customers
+  const fetchCustomers = async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await apiClient.get<ApiResponse>('/auth/V1/get-all-customers', {
+        params: {
+          page,
+          limit,
+          search: searchQuery || undefined,
+        },
+      });
+
+      const { rows, count, activeCount: active, deactiveCount: inactive } = data.data;
+
+      setCustomers(rows);
+      setTotal(count);
+      setActiveCount(active);
+      setInactiveCount(inactive);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to load customers');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [page, limit, searchQuery]);
+
+  // Toggle status
+  const handleStatusToggle = async () => {
+    if (!selectedId) return;
+
+    try {
+      await apiClient.patch(`/auth/V1/update-status/${selectedId}`);
+      toast.success('Customer status updated');
+      fetchCustomers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update status');
+    } finally {
+      setStatusModal(false);
+      setSelectedId('');
+    }
+  };
 
   const columns = [
     {
-      key: 'profile',
+      key: 'customer',
       header: 'Customer',
-      render: (item: typeof mockCustomers[0]) => (
+      render: (item: Customer) => (
         <div className="flex items-center gap-3">
-          <div className="relative h-10 w-10 rounded-full overflow-hidden bg-gray-100">
-            {item.profile_pic ? (
-              <Image
-                src={item.profile_pic}
-                alt={item.fullname}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+          <div className="relative h-10 w-10 rounded-full overflow-hidden bg-gray-100 border">
+            {item.fullname ? (
+              <div className="flex h-full w-full items-center justify-center bg-teal-100 text-teal-600 font-bold">
+                {item.fullname.charAt(0).toUpperCase()}
+              </div>
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-teal-100 text-teal-600 font-bold text-sm">
-                {item.fullname.charAt(0)}
+              <div className="flex h-full w-full items-center justify-center bg-gray-300 text-gray-600 text-xs">
+                —
               </div>
             )}
           </div>
           <div>
-            <p className="font-semibold text-sm">{item.fullname}</p>
-            <p className="text-xs text-gray-500">{item.mobile}</p>
+            <p className="font-medium text-sm">
+              {item.fullname || <span className="text-gray-400 italic">No name</span>}
+            </p>
+           
           </div>
         </div>
       ),
@@ -55,122 +123,119 @@ export default function CustomersPage() {
     {
       key: 'contact',
       header: 'Contact',
-      render: (item: typeof mockCustomers[0]) => (
-        <div>
-          <p className="text-sm">{item.email}</p>
-          <p className="text-xs text-gray-500">{item.addresses[0]?.emirate || '-'}</p>
-        </div>
-      ),
-    },
-    {
-      key: 'subscription',
-      header: 'Subscription',
-      render: (item: typeof mockCustomers[0]) => (
+      render: (item: Customer) => (
         <div className="text-sm">
-          {item.subscription_plan_id ? (
-            <div>
-              <p className="font-medium">Premium</p>
-              <p className="text-xs text-gray-500">
-                {item.plan_start_date} → {item.plan_end_date}
-              </p>
-            </div>
-          ) : (
-            <span className="text-gray-400">No Plan</span>
-          )}
+          <p>{item.email || <span className="text-gray-400">—</span>}</p>
+           <p className="text-xs text-gray-500">{item.mobile}</p>
         </div>
       ),
     },
     {
-      key: 'status',
-      header: 'Status',
-      render: (item: typeof mockCustomers[0]) => (
-        <Badge
-          variant={
-            item.status === 'approved' ? 'default' :
-            item.status === 'pending' ? 'secondary' : 'destructive'
-          }
-        >
-          {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-        </Badge>
-      ),
-    },
+  key: 'Plan_start_date',
+  header: 'Plan',
+  render: (item: Customer) => {
+    // Destructure the start and end date
+    const { plan_start_date, plan_end_date } = item;
+
+    // Check if both start and end date are present
+    if (plan_start_date && plan_end_date) {
+      return (
+        <div className="text-sm">
+          <p>{new Date(plan_start_date).toLocaleDateString()} → {new Date(plan_end_date).toLocaleDateString()}</p>
+        </div>
+      );
+    }
+
+    // If either or both dates are missing, show "No plan"
+    return (
+      <div className="text-sm">
+        <p className="text-gray-400">No plan</p>
+      </div>
+    );
+  },
+}
+
   ];
 
   return (
     <ContentLayout title="Customers">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-teal-100 rounded">
-              <Users className="h-5 w-5 text-teal-600" />
-            </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-teal-600">Total Customers</p>
-              <p className="text-xl font-bold">{mockCustomers.length}</p>
+              <p className="text-sm text-gray-600">Total Customers</p>
+              <p className="text-3xl font-bold mt-1">{total}</p>
+            </div>
+            <div className="p-3 bg-teal-100 rounded-lg">
+              <Users className="h-7 w-7 text-teal-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-green-100 rounded">
-              <UserCheck className="h-5 w-5 text-green-600" />
-            </div>
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-green-600">Active</p>
-              <p className="text-xl font-bold">
-                {mockCustomers.filter(c => c.is_active).length}
-              </p>
+              <p className="text-sm text-gray-600">Active</p>
+              <p className="text-3xl font-bold text-emerald-600 mt-1">{activeCount}</p>
+            </div>
+            <div className="p-3 bg-emerald-100 rounded-lg">
+              <UserCheck className="h-7 w-7 text-emerald-600" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-blue-100 rounded">
-              <Calendar className="h-5 w-5 text-blue-600" />
-            </div>
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-semibold text-blue-600">Subscribed</p>
-              <p className="text-xl font-bold">
-                {mockCustomers.filter(c => c.subscription_plan_id).length}
-              </p>
+              <p className="text-sm text-gray-600">Inactive</p>
+              <p className="text-3xl font-bold text-red-600 mt-1">{inactiveCount}</p>
             </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-purple-100 rounded">
-              <Clock className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-purple-600">Last Login</p>
-              <p className="text-sm font-medium">
-                {mockCustomers[0]?.last_login
-                  ? new Date(mockCustomers[0].last_login).toLocaleDateString()
-                  : '-'}
-              </p>
+            <div className="p-3 bg-red-100 rounded-lg">
+              <UserX className="h-7 w-7 text-red-600" />
             </div>
           </div>
         </div>
       </div>
 
-      <ListComponent
-        title="Customer"
-        data={paginated}
-        columns={columns}
-        isLoading={false}
-        viewRoute={(id) => `/customers/${id}`}
-        currentPage={page}
-        setCurrentPage={setPage}
-        itemsPerPage={limit}
-        setItemsPerPage={setLimit}
-        totalItems={total}
-        searchQuery={search}
-        setSearchQuery={setSearch}
-        showStatusToggle={false}
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+        <ListComponent
+          title="Customer"
+          data={customers}
+          columns={columns}
+          isLoading={isLoading}
+          addRoute="/customers/add"
+          editRoute={(id) => `/customers/edit/${id}`}
+          deleteEndpoint={(id) => `/auth/V1/delete-customer/${id}`}
+          viewRoute={(id) => `/customers/view/${id}`}
+          currentPage={page}
+          setCurrentPage={setPage}
+          itemsPerPage={limit}
+          setItemsPerPage={setLimit}
+          totalItems={total}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          statusField="is_active"
+          showStatusToggle={true}
+          onStatusToggle={async(id) => {
+            setSelectedId(id);
+            setStatusModal(true);
+          }}
+        />
+      </div>
+
+      {/* Status Toggle Confirmation Modal */}
+      <CustomModal
+        isOpen={statusModal}
+        onRequestClose={() => {
+          setStatusModal(false);
+          setSelectedId('');
+        }}
+        title="Update Customer Status"
+        description="Are you sure you want to toggle this customer's status?"
+        onConfirm={handleStatusToggle}
+        confirmText="Yes, Update Status"
       />
     </ContentLayout>
   );
