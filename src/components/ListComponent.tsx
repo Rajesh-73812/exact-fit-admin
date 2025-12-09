@@ -137,7 +137,8 @@ export default function ListComponent({
   const isContactUsPage = pathName === '/contactus' || pathName === '/contactus/list';
   const isPlanPage = pathName === '/plans' || pathName === '/plans/list';
   const isCustomers = pathName === '/customers' || pathName === '/customers/list';
-
+  const isNotifications = pathName === '/notifications' || pathName === '/notifications/list';
+  console.log(isContactUsPage,"pppppppppppppp")
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -165,13 +166,14 @@ export default function ListComponent({
   };
 
   const handleItemsPerPageChange = (v: string) => {
+    // alert('Items per page changed to ' + v);
     setItemsPerPage(Number(v));
     setCurrentPage(1);
   };
 
   /* ---------- Delete ---------- */
   const handleDelete = async (id: string) => {
-
+  
     try {
       setDeletingId(id);
       if (onDelete) {
@@ -273,13 +275,17 @@ export default function ListComponent({
               />
             </div>
 
-            <Button
+            {
+              addRoute && !isCustomers && (
+                <Button
               onClick={() => router.push(addRoute)}
               className="flex items-center bg-primary text-primary-foreground hover:bg-primary/90"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add {title}
             </Button>
+              )
+            }
           </div>
         )}
 
@@ -430,8 +436,8 @@ export default function ListComponent({
                             ) : (
                               <span
                                 className={`inline-flex items-center rounded-full text-xs font-medium px-3 py-1 ${item[approvalField] === 'approved'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-red-100 text-red-800'
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-red-100 text-red-800'
                                   }`}
                               >
                                 {item[approvalField] === 'approved'
@@ -448,7 +454,7 @@ export default function ListComponent({
                           {/* View */}
                           {title !== 'Transaction' &&
                             title !== 'Notifications' &&
-                            viewRoute && !isPlanPage && (
+                            viewRoute && !isPlanPage && !isNotifications &&(
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -466,11 +472,11 @@ export default function ListComponent({
 
                           {/* Edit */}
                           {!isCustomers &&
-                            !isContactUsPage &&
+                            !isContactUsPage && !isContactUsPage &&
                             title !== 'Transaction' &&
                             item.status !== 'cancelled' &&
                             item.status !== 'completed' &&
-                            title !== 'Notifications' && (
+                            title !== 'Sent Notifications' && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -506,7 +512,7 @@ export default function ListComponent({
                               </Tooltip>
                             )
                           ) : (
-                            title !== 'Transaction' &&
+                            title !== 'Transaction' && !isContactUsPage &&
                             onDelete && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -526,7 +532,8 @@ export default function ListComponent({
                           )}
 
                           {/* Download (Transaction) */}
-                          {title === 'Transaction' && (
+
+                          {title === 'Transaction' &&  'Sent Notifications' && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
@@ -560,7 +567,7 @@ export default function ListComponent({
                 Showing {startIndex} to {endIndex} of {totalItems} {title.toLowerCase()}
               </span>
 
-              <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+              <Select value={itemsPerPage.toString()} onValueChange={(v)=>handleItemsPerPageChange(v)}>
                 <SelectTrigger className="w-20 bg-background text-foreground border-input focus:ring-primary">
                   <SelectValue />
                 </SelectTrigger>
