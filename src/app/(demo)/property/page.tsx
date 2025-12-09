@@ -164,7 +164,7 @@ export default function PropertyPage() {
           <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
           <div className="flex items-center gap-3">
             <div className="rounded bg-[#E31E24] bg-opacity-10 p-2">
-              <Image src={PropertyIcon} alt="Total" width={20} height={20} />
+              <Image src="/property.png" alt="Total" width={20} height={20} />
             </div>
             <div>
               <p className="text-xs font-semibold text-[#E31E24] uppercase">Total Properties</p>
@@ -178,7 +178,7 @@ export default function PropertyPage() {
           <div className="absolute top-0 left-0 w-1 h-full bg-green-600 rounded" />
           <div className="flex items-center gap-3">
             <div className="rounded bg-green-600 bg-opacity-10 p-2">
-              <Image src={ActiveIcon} alt="Active" width={20} height={20} />
+              <Image src="/active_plan.svg" alt="Active" width={20} height={20} />
             </div>
             <div>
               <p className="text-xs font-semibold text-green-600 uppercase">Active</p>
@@ -192,7 +192,7 @@ export default function PropertyPage() {
           <div className="absolute top-0 left-0 w-1 h-full bg-red-600 rounded" />
           <div className="flex items-center gap-3">
             <div className="rounded bg-red-600 bg-opacity-10 p-2">
-              <Image src={InactiveIcon} alt="Inactive" width={20} height={20} />
+              <Image src="/inactive_plan.svg" alt="Inactive" width={20} height={20} />
             </div>
             <div>
               <p className="text-xs font-semibold text-red-600 uppercase">Inactive</p>
