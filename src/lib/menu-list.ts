@@ -87,15 +87,15 @@ export function getMenuList(pathname: string): Group[] {
           icon:SquarePen,
           submenus:[
             {
-              href:"/subscription",
+              href:"/bookings/subscriptions",
               label:"Subscription"
             },
             {
-              href:"/emergency",
+              href:"/bookings/emergency",
               label:"Emergency",
             },
             {
-              href:"enquiry",
+              href:"/bookings/enquiry",
               label:"Enquiry"
             }
           ]
