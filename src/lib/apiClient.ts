@@ -8,7 +8,6 @@ import { getToken } from './getToken';
 
 
 const apiClient: AxiosInstance = axios.create({
-  // baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4446/api/admin",
   baseURL: process.env.NEXT_PUBLIC_API_URL || "https://exact-fit-server.vercel.app/api/admin",
   timeout: 30000,
   // headers: {
@@ -53,5 +52,6 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+
 
 
