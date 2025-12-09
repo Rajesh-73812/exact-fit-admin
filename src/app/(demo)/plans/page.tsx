@@ -188,46 +188,60 @@ export default function PlanPage() {
             {/* Analytics Cards - Same Design as Services */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 {/* Total Plans */}
-                <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
-                    <div className="flex items-center gap-3">
-                        <div className="rounded bg-[#E31E24] bg-opacity-10 p-2">
-                            <Image src={PlanIcon} alt="Total Plans" width={20} height={20} />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-[#E31E24] uppercase">Total Plans</p>
-                            <p className="text-2xl font-bold">{analytics.totalPlans}</p>
-                        </div>
-                    </div>
-                </div>
+<div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
+  <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+  <div className="flex items-center gap-3">
+    <div className="rounded bg-[#E31E24] bg-opacity-10 p-2">
+      <Image src="/active_plan.svg" alt="Total Plans" width={20} height={20} />
+    </div>
+    <div>
+      <p className="text-xs font-semibold text-[#E31E24] uppercase">Total Plans</p>
+      <p className="text-2xl font-bold">{analytics.totalPlans}</p>
+    </div>
+  </div>
+</div>
 
-                {/* Active Plans */}
-                <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-green-600 rounded" />
-                    <div className="flex items-center gap-3">
-                        <div className="rounded bg-green-600 bg-opacity-10 p-2">
-                            <Image src={ActivePlanIcon} alt="Active" width={20} height={20} />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-green-600 uppercase">Active Plans</p>
-                            <p className="text-2xl font-bold">{analytics.activePlans}</p>
-                        </div>
-                    </div>
-                </div>
+{/* Active Plans */}
+<div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
+  <div className="absolute top-0 left-0 w-1 h-full bg-green-600 rounded" />
+  <div className="flex items-center gap-3">
+    <div className="rounded bg-green-600 bg-opacity-10 p-2">
+      <Image src="/active_plan.svg" alt="Active" width={20} height={20} />
+    </div>
+    <div>
+      <p className="text-xs font-semibold text-green-600 uppercase">Active Plans</p>
+      <p className="text-2xl font-bold">{analytics.activePlans}</p>
+    </div>
+  </div>
+</div>
 
-                {/* Inactive Plans */}
-                <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
-                    <div className="absolute top-0 left-0 w-1 h-full bg-red-600 rounded" />
-                    <div className="flex items-center gap-3">
-                        <div className="rounded bg-red-600 bg-opacity-10 p-2">
-                            <Image src={InActivePlanIcon} alt="Inactive" width={20} height={20} />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-red-600 uppercase">Inactive Plans</p>
-                            <p className="text-2xl font-bold">{analytics.inactivePlans}</p>
-                        </div>
-                    </div>
-                </div>
+{/* Inactive Plans */}
+<div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
+  <div className="absolute top-0 left-0 w-1 h-full bg-red-600 rounded" />
+  <div className="flex items-center gap-3">
+    <div className="rounded bg-red-600 bg-opacity-10 p-2">
+      <Image src="/inactive_plan.svg" alt="Inactive" width={20} height={20} />
+    </div>
+    <div>
+      <p className="text-xs font-semibold text-red-600 uppercase">Inactive Plans</p>
+      <p className="text-2xl font-bold">{analytics.inactivePlans}</p>
+    </div>
+  </div>
+</div>
+
+{/* Total Revenue */}
+<div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
+  <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+  <div className="flex items-center gap-3">
+    <div className="rounded bg-[#E31E24] bg-opacity-10 p-2">
+      <IndianRupee className="h-5 w-5 text-black" />
+    </div>
+    <div>
+      <p className="text-xs font-semibold text-[#E31E24] uppercase">Total Revenue</p>
+      <p className="text-2xl font-bold">₹{analytics.totalRevenue.toLocaleString('en-IN')}</p>
+    </div>
+  </div>
+</div>
 
                 {/* Total Revenue */}
                 <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
