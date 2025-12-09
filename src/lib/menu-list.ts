@@ -1,4 +1,4 @@
-import { Tag, Users, Settings, Bookmark, SquarePen, LayoutGrid, LucideIcon, BookmarkMinus, Box, Image,UserCog, IndianRupee, Bell, Contact  } from "lucide-react";
+import { Tag, Users, Settings, Bookmark, SquarePen, LayoutGrid, LucideIcon, BookmarkMinus, Box, Image,UserCog, IndianRupee, Bell, Contact, Building  } from "lucide-react";
 
 type Submenu = {
   href: string;
@@ -74,7 +74,7 @@ export function getMenuList(pathname: string): Group[] {
         {
           href: "/property",
           label: "Property",
-          icon: IndianRupee
+          icon: Building
         }
       ]
     },
