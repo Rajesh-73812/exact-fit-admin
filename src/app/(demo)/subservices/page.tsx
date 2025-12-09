@@ -39,6 +39,7 @@ export default function SubServicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
@@ -55,13 +56,13 @@ export default function SubServicesPage() {
   /* -------------------------------------------------- FETCH -------------------------------------------------- */
   useEffect(() => {
     fetchSubServices();
-  }, [page, searchQuery]);
+  }, [page, itemsPerPage, searchQuery]);
 
   const fetchSubServices = async () => {
     setIsLoading(true);
     try {
       const { data } = await apiClient.get('/sub-service/V1/get-all-sub-service', {
-        params: { page, limit: 10, search: searchQuery || undefined },
+        params: { page, limit: itemsPerPage, search: searchQuery || undefined },
       });
 
       const items = data.data || [];
@@ -279,8 +280,8 @@ export default function SubServicesPage() {
           }}
           currentPage={page}
           setCurrentPage={setPage}
-          itemsPerPage={10}
-          setItemsPerPage={() => { }}
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={setItemsPerPage}
           totalItems={total}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}

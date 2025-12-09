@@ -42,6 +42,7 @@ export default function ServicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [openDialog, setOpenDialog] = useState(false);
@@ -60,7 +61,7 @@ export default function ServicesPage() {
     setIsLoading(true);
     try {
       const { data } = await apiClient.get('/service/V1/get-all-service', {
-        params: { page, limit: 10, search: searchQuery || undefined },
+        params: { page, limit: itemsPerPage, search: searchQuery || undefined },
       });
 
       const items = data.data || [];
@@ -94,7 +95,7 @@ export default function ServicesPage() {
 
   useEffect(() => {
     fetchServices();
-  }, [page, searchQuery]);
+  }, [page, itemsPerPage, searchQuery]);
 
   // Make handlers async → matches ListComponent's expected signature
   const handleStatusToggle = async (slug: string) => {
@@ -165,7 +166,7 @@ export default function ServicesPage() {
     },
     {
       key: 'productsCount',
-      header: 'Total Products',
+      header: 'Total SubServices',
       render: (item: Service) => <span className="text-center">{item.productsCount ?? 0}</span>,
     },
     {
@@ -265,8 +266,8 @@ export default function ServicesPage() {
         }}
         currentPage={page}
         setCurrentPage={setPage}
-        itemsPerPage={10}
-        setItemsPerPage={() => {}}
+        itemsPerPage={itemsPerPage}
+        setItemsPerPage={setItemsPerPage}
         totalItems={total}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
