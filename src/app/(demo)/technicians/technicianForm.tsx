@@ -228,6 +228,7 @@ const TechnicianForm = ({ readOnly = false }: { readOnly?: boolean }) => {
                   <SelectContent>
                     <SelectItem value="subscription">Subscription</SelectItem>
                     <SelectItem value="emergency">Emergency</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
                   </SelectContent>
                 </Select>
                 {errors.type && <p className="text-red-600 text-sm mt-1">{errors.type}</p>}

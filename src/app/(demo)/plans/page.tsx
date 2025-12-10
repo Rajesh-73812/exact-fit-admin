@@ -4,16 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { IndianRupee } from 'lucide-react';
-
 import ListComponent from '@/components/ListComponent';
 import CustomModal from '@/components/CustomModal';
 import apiClient from '@/lib/apiClient';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
-
-// Icons
-import ActivePlanIcon from '/public/active_plan.svg';
-import InActivePlanIcon from '/public/inactive_plan.svg';
-import PlanIcon from '/public/plan.svg';
 
 interface Plan {
     name: string;
@@ -50,7 +44,6 @@ export default function PlanPage() {
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
-
     const [openDialog, setOpenDialog] = useState(false);
     const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
     const [deleteDialog, setDeleteDialog] = useState(false);
@@ -78,7 +71,7 @@ export default function PlanPage() {
             }));
 
             setPlans(transformed);
-            setTotal(items.length); // or data.pagination?.total if exists
+            setTotal(items.length);
 
             const active = transformed.filter(p => p.is_active).length;
             const revenue = transformed.reduce((sum, p) => sum + p.base_price, 0);
@@ -101,7 +94,6 @@ export default function PlanPage() {
         fetchPlans();
     }, [page, searchQuery]);
 
-    // Toggle Status - called from modal
     const handleStatusToggle = async () => {
         if (!selectedSlug) return;
 
@@ -119,7 +111,6 @@ export default function PlanPage() {
         }
     };
 
-    // Delete Plan - called from modal
     const handleDeletePlan = async () => {
         if (!deleteSlug) return;
 
@@ -188,60 +179,46 @@ export default function PlanPage() {
             {/* Analytics Cards - Same Design as Services */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 {/* Total Plans */}
-<div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
-  <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
-  <div className="flex items-center gap-3">
-    <div className="rounded bg-[#E31E24] bg-opacity-10 p-2">
-      <Image src="/active_plan.svg" alt="Total Plans" width={20} height={20} />
-    </div>
-    <div>
-      <p className="text-xs font-semibold text-[#E31E24] uppercase">Total Plans</p>
-      <p className="text-2xl font-bold">{analytics.totalPlans}</p>
-    </div>
-  </div>
-</div>
+                <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+                    <div className="flex items-center gap-3">
+                        <div className="rounded bg-[#E31E24] bg-opacity-10 p-2">
+                            <Image src="/active_plan.svg" alt="Total Plans" width={20} height={20} />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-[#E31E24] uppercase">Total Plans</p>
+                            <p className="text-2xl font-bold">{analytics.totalPlans}</p>
+                        </div>
+                    </div>
+                </div>
 
-{/* Active Plans */}
-<div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
-  <div className="absolute top-0 left-0 w-1 h-full bg-green-600 rounded" />
-  <div className="flex items-center gap-3">
-    <div className="rounded bg-green-600 bg-opacity-10 p-2">
-      <Image src="/active_plan.svg" alt="Active" width={20} height={20} />
-    </div>
-    <div>
-      <p className="text-xs font-semibold text-green-600 uppercase">Active Plans</p>
-      <p className="text-2xl font-bold">{analytics.activePlans}</p>
-    </div>
-  </div>
-</div>
+                {/* Active Plans */}
+                <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-green-600 rounded" />
+                    <div className="flex items-center gap-3">
+                        <div className="rounded bg-green-600 bg-opacity-10 p-2">
+                            <Image src="/active_plan.svg" alt="Active" width={20} height={20} />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-green-600 uppercase">Active Plans</p>
+                            <p className="text-2xl font-bold">{analytics.activePlans}</p>
+                        </div>
+                    </div>
+                </div>
 
-{/* Inactive Plans */}
-<div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
-  <div className="absolute top-0 left-0 w-1 h-full bg-red-600 rounded" />
-  <div className="flex items-center gap-3">
-    <div className="rounded bg-red-600 bg-opacity-10 p-2">
-      <Image src="/inactive_plan.svg" alt="Inactive" width={20} height={20} />
-    </div>
-    <div>
-      <p className="text-xs font-semibold text-red-600 uppercase">Inactive Plans</p>
-      <p className="text-2xl font-bold">{analytics.inactivePlans}</p>
-    </div>
-  </div>
-</div>
-
-{/* Total Revenue */}
-<div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
-  <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
-  <div className="flex items-center gap-3">
-    <div className="rounded bg-[#E31E24] bg-opacity-10 p-2">
-      <IndianRupee className="h-5 w-5 text-black" />
-    </div>
-    <div>
-      <p className="text-xs font-semibold text-[#E31E24] uppercase">Total Revenue</p>
-      <p className="text-2xl font-bold">₹{analytics.totalRevenue.toLocaleString('en-IN')}</p>
-    </div>
-  </div>
-</div>
+                {/* Inactive Plans */}
+                <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-red-600 rounded" />
+                    <div className="flex items-center gap-3">
+                        <div className="rounded bg-red-600 bg-opacity-10 p-2">
+                            <Image src="/inactive_plan.svg" alt="Inactive" width={20} height={20} />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-red-600 uppercase">Inactive Plans</p>
+                            <p className="text-2xl font-bold">{analytics.inactivePlans}</p>
+                        </div>
+                    </div>
+                </div>
 
                 {/* Total Revenue */}
                 <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
@@ -258,7 +235,6 @@ export default function PlanPage() {
                 </div>
             </div>
 
-            {/* List Component - EXACTLY like Services */}
             <ListComponent
                 title="Plan"
                 data={plans}
@@ -267,22 +243,16 @@ export default function PlanPage() {
                 addRoute="/plans/add"
                 editRoute={(slug) => `/plans/edit/${slug}`}
                 viewRoute={(slug) => `/plans/view/${slug}`}
-
-                // Endpoints
                 deleteEndpoint={(slug) => `/plan/V1/delete-plan/${slug}`}
                 statusToggleEndpoint={(slug) => `/plan/V1/update-plan-status/${slug}`}
-
-                // Critical Fix: Accept 2 args from ListComponent
                 onStatusToggle={async (slug: string, _newStatus: string) => {
                     setSelectedSlug(slug);
                     setOpenDialog(true);
                 }}
-
                 onDelete={async (slug: string) => {
                     setDeleteSlug(slug);
                     setDeleteDialog(true);
                 }}
-
                 currentPage={page}
                 setCurrentPage={setPage}
                 itemsPerPage={10}
@@ -290,7 +260,7 @@ export default function PlanPage() {
                 totalItems={total}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
-                statusField="is_active"  // This is the actual field in your data
+                statusField="is_active" 
                 showStatusToggle={true}
             />
 

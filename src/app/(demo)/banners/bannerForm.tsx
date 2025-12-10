@@ -330,7 +330,7 @@ export default function BannerForm() {
                 accept="image/*"
                 onChange={handleImageChange}
                 disabled={uploading}
-                className="mt-6 block w-full text-sm file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer"
+                className="mt-4 block w-full text-sm file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer"
               />
             </div>
           </div>
