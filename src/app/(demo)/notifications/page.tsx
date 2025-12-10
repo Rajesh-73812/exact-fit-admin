@@ -414,6 +414,7 @@ export default function NotificationsPage() {
                 setDeleteId(id);
                 setDeleteDialog(true);
               }}
+              deleteEndpoint={(id) => `/notifications/V1/delete-property/${id}`}
             />
           </CardContent>
         </Card>

@@ -8,11 +8,6 @@ import { IndianRupee, Home, CheckCircle, XCircle } from 'lucide-react';
 import ListComponent from '@/components/ListComponent';
 import CustomModal from '@/components/CustomModal';
 import apiClient from '@/lib/apiClient';
-
-// Icons
-import PropertyIcon from '/public/property.png';
-import ActiveIcon from '/public/active_plan.svg';
-import InactiveIcon from '/public/inactive_plan.svg';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
 
 interface Property {
