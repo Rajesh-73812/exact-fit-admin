@@ -262,7 +262,7 @@ export default function PlanForm({ slug }: PlanFormProps) {
                   Plan Description & Benefits
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Use headings, bold, lists, links — looks premium!
+                  Use headings, bold, lists, — looks premium!
                 </p>
               </div>
 
@@ -282,9 +282,10 @@ export default function PlanForm({ slug }: PlanFormProps) {
                       toolbar: [
                         [{ header: [1, 2, 3, false] }],
                         ['bold', 'italic', 'underline'],
-                        [{ list: 'ordered' }, { list: 'bullet' }],
-                        ['link'],
-                        ['clean']
+                        [{ list: 'ordered' },],
+                        // [{ list: 'ordered' }, { list: 'bullet' }],
+                        // ['link'],
+                        // ['clean']
                       ]
                     }}
                   />
@@ -305,7 +306,7 @@ export default function PlanForm({ slug }: PlanFormProps) {
             <Button type="button" variant="outline" onClick={() => router.push('/plans')}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 px-8">
+            <Button type="submit" disabled={loading} className="bg-black px-8">
               {loading ? 'Saving...' : isEdit ? 'Update Plan' : 'Create Plan'}
             </Button>
           </div>

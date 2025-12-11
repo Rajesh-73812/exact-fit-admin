@@ -250,7 +250,6 @@ const SubServiceForm: React.FC = () => {
                         </div>
 
                         {/* Position, Price, Discount */}
-                        <div className="grid grid-cols-3 gap-4">
                             <div>
                                 <Label><LocateIcon className="w-5 h-5 inline mr-2" /> Position</Label>
                                 <Input type="number" name="position" value={formData.position} onChange={handleInputChange} placeholder="0" />
@@ -260,10 +259,9 @@ const SubServiceForm: React.FC = () => {
                                 <Input type="number" step="0.01" name="price" value={formData.price} onChange={handleInputChange} placeholder="0.00" />
                             </div>
                             <div>
-                                <Label><Percent className="w-5 h-5 inline mr-2" /> Discount %</Label>
+                                <Label><Percent className="w-5 h-5 inline mr-2" /> Discount (In Percentage)</Label>
                                 <Input type="number" name="discount" value={formData.discount} onChange={handleInputChange} min="0" max="100" placeholder="0" />
                             </div>
-                        </div>
 
                         <div>
                             <Label><Activity className="w-5 h-5 inline mr-2" /> Status</Label>
@@ -329,7 +327,7 @@ const SubServiceForm: React.FC = () => {
                                     accept="image/*"
                                     onChange={handleImageChange}
                                     disabled={uploadingImage}
-                                    className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                                    className="mt-4 block w-full text-sm file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer"
                                 />
                                 {serviceImageFiles[0] && (
                                     <Button type="button" size="sm" variant="destructive" onClick={() => removeServiceImage(0)}>
@@ -373,7 +371,7 @@ const SubServiceForm: React.FC = () => {
                                     accept="image/*"
                                     onChange={handleHeroBannerChange}
                                     disabled={uploadingHero}
-                                    className="block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                                    className="mt-4 block w-full text-sm file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer"
                                 />
                                 {heroFiles[0] && (
                                     <Button type="button" size="sm" variant="destructive" onClick={() => removeHeroImage(0)}>
@@ -390,7 +388,7 @@ const SubServiceForm: React.FC = () => {
                     <Button type="button" variant="outline" onClick={() => router.push('/subservices')}>
                         Cancel
                     </Button>
-                    <Button type="submit" onClick={handleSubmit} disabled={isLoading || uploadingImage || uploadingHero} className="bg-indigo-600 hover:bg-indigo-700">
+                    <Button type="submit" onClick={handleSubmit} disabled={isLoading || uploadingImage || uploadingHero} className="bg-black">
                         {isLoading ? 'Saving...' : isEdit ? 'Update Sub-Service' : 'Create Sub-Service'}
                     </Button>
                 </div>

@@ -31,20 +31,18 @@ export default function ServiceForm() {
   const router = useRouter();
   const { slug } = useParams();
   const isEdit = !!slug;
-
   const [loading, setLoading] = useState(false);
-
-  // Presigned upload hook → single image mode (multiple = false by default)
   const { files, uploading, uploadFiles, removeFile, getUploadedUrls } = usePresignedUpload("services");
 
   const [formData, setFormData] = useState({
+    type: 'enquiry',
     title: '',
     service_slug: '',
     position: '',
     image_alt: '',
     description: '',
     is_active: '1',
-    existing_image_url: '', // only for edit mode
+    existing_image_url: '',
   });
 
   // Auto-update slug
@@ -65,6 +63,7 @@ export default function ServiceForm() {
         const svc = data.data;
 
         setFormData({
+          type: svc.type,
           title: svc.title || '',
           service_slug: svc.service_slug || '',
           position: svc.position?.toString() || '',
@@ -87,12 +86,12 @@ export default function ServiceForm() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+    if (file.size > 5 * 1024 * 1024) {
       alert('Image must be ≤ 5MB');
       return;
     }
 
-    uploadFiles([file]); // ← Pass as array with 1 file (hook handles single mode)
+    uploadFiles([file]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,7 +109,7 @@ export default function ServiceForm() {
     setLoading(true);
 
     try {
-      const uploadedImageUrl = getUploadedUrls()[0]; // latest uploaded image
+      const uploadedImageUrl = getUploadedUrls()[0];
       const finalImageUrl = uploadedImageUrl || formData.existing_image_url;
       console.log("DEBUG UPLOAD STATE:", {
         files,
@@ -119,6 +118,7 @@ export default function ServiceForm() {
         existingImage: formData.existing_image_url,
       });
       const payload = {
+        type: formData.type,
         title: formData.title.trim(),
         service_slug: generateSlug(formData.title),
         ...(isEdit && { old_service_slug: slug as string }),
@@ -139,9 +139,8 @@ export default function ServiceForm() {
     }
   };
 
-  // Show preview if uploading, otherwise show uploaded URL or existing
   const currentImageUrl =
-    files[0]?.uploadedUrl ||           // ← Final uploaded S3 URL
+    files[0]?.uploadedUrl ||
     (files[0]?.uploading ? files[0]?.preview : null) ||
     formData.existing_image_url;
 
@@ -165,6 +164,22 @@ export default function ServiceForm() {
 
           {/* Left: Form Fields */}
           <div className="space-y-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+            <div>
+              <Label> Service Type <span className="text-red-500">*</span></Label>
+              <Select
+                value={formData.type || ''}
+                onValueChange={(v) => setFormData(prev => ({ ...prev, type: v }))}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select service type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="subscription">Subscription</SelectItem>
+                  <SelectItem value="enquiry">Enquiry</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label className="flex items-center gap-2"><Tag className="w-5 h-5" /> Service Name <span className="text-red-500">*</span></Label>
               <Input
@@ -192,26 +207,6 @@ export default function ServiceForm() {
             </div>
 
             <div>
-              <Label><ImagePlus className="w-5 h-5 inline mr-2" /> Image Alt Text</Label>
-              <Input
-                value={formData.image_alt}
-                onChange={(e) => setFormData(prev => ({ ...prev, image_alt: e.target.value }))}
-                placeholder="Describe image for SEO"
-              />
-            </div>
-
-            <div>
-              <Label><Activity className="w-5 h-5 inline mr-2" /> Status</Label>
-              <Select value={formData.is_active} onValueChange={(v) => setFormData(prev => ({ ...prev, is_active: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">Active</SelectItem>
-                  <SelectItem value="0">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
               <Label><FileText className="w-5 h-5 inline mr-2" /> Description</Label>
               <Textarea
                 value={formData.description}
@@ -223,58 +218,80 @@ export default function ServiceForm() {
 
           {/* Right: Image Upload */}
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-              <h3 className="text-lg font-semibold mb-4">Service Image</h3>
-
-              {/* Fixed: Image stays perfectly inside the box */}
-              <div className="border-2 border-dashed border-gray-300 rounded-xl h-80 flex items-center justify-center bg-gray-50 relative overflow-hidden">
-                {currentImageUrl ? (
-                  <div className="relative w-full h-full">
-                    <Image
-                      src={currentImageUrl}
-                      alt="Service preview"
-                      fill
-                      className="object-contain p-4"  // ← This is the magic line
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
-                  </div>
-                ) : (
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gray-200 border-2 border-dashed rounded-xl mx-auto mb-4" />
-                    <p className="text-gray-600">No image selected</p>
-                  </div>
-                )}
-
-                {/* Upload Overlay */}
-                {files[0]?.uploading && (
-                  <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-10">
-                    <div className="text-white text-lg">Uploading...</div>
-                  </div>
-                )}
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 space-y-6">
+              {/* Image Alt Text */}
+              <div>
+                <Label><ImagePlus className="w-5 h-5 inline mr-2" /> Image Alt Text</Label>
+                <Input
+                  value={formData.image_alt}
+                  onChange={(e) => setFormData(prev => ({ ...prev, image_alt: e.target.value }))}
+                  placeholder="Describe image for SEO"
+                />
               </div>
 
-              {/* Remove button */}
-              {currentImageUrl && (
-                <div className="mt-3 text-right">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => removeFile(0)}
-                    disabled={uploading}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" /> Remove Image
-                  </Button>
-                </div>
-              )}
+              {/* Status */}
+              <div>
+                <Label><Activity className="w-5 h-5 inline mr-2" /> Status</Label>
+                <Select value={formData.is_active} onValueChange={(v) => setFormData(prev => ({ ...prev, is_active: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Active</SelectItem>
+                    <SelectItem value="0">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                disabled={uploading}
-                className="mt-4 block w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
-              />
+              {/* Service Image Section */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Service Image</h3>
+
+                <div className="border-2 border-dashed border-gray-300 rounded-xl h-80 flex items-center justify-center bg-gray-50 relative overflow-hidden">
+                  {currentImageUrl ? (
+                    <div className="relative w-full h-full">
+                      <Image
+                        src={currentImageUrl}
+                        alt="Service preview"
+                        fill
+                        className="object-contain p-4"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-16 h-16 bg-gray-200 border-2 border-dashed rounded-xl mx-auto mb-4" />
+                      <p className="text-gray-600">No image selected</p>
+                    </div>
+                  )}
+
+                  {files[0]?.uploading && (
+                    <div className="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center z-10">
+                      <div className="text-white text-lg">Uploading...</div>
+                    </div>
+                  )}
+                </div>
+
+                {currentImageUrl && (
+                  <div className="mt-3 text-right">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => removeFile(0)}
+                      disabled={uploading}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" /> Remove Image
+                    </Button>
+                  </div>
+                )}
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  disabled={uploading}
+                  className="mt-4 block w-full text-sm file:mr-4 file:py-3 file:px-6 file:rounded-lg file:border-0 file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer"
+                />
+              </div>
             </div>
           </div>
 
@@ -283,7 +300,7 @@ export default function ServiceForm() {
             <Button type="button" variant="outline" onClick={() => router.push('/services')}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || uploading} className="bg-indigo-600 hover:bg-indigo-700">
+            <Button type="submit" disabled={loading || uploading} >
               {loading ? 'Saving...' : isEdit ? 'Update Service' : 'Create Service'}
             </Button>
           </div>

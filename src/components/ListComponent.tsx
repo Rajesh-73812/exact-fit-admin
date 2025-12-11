@@ -138,7 +138,7 @@ export default function ListComponent({
   const isPlanPage = pathName === '/plans' || pathName === '/plans/list';
   const isCustomers = pathName === '/customers' || pathName === '/customers/list';
   const isNotifications = pathName === '/notifications' || pathName === '/notifications/list';
-  console.log(isContactUsPage,"pppppppppppppp")
+  const isTickets = pathName === '/tickets' || pathName === '/tickets/list';
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -472,7 +472,7 @@ export default function ListComponent({
 
                           {/* Edit */}
                           {!isCustomers &&
-                            !isContactUsPage && !isContactUsPage &&
+                            !isContactUsPage && !isContactUsPage && !isTickets &&
                             title !== 'Transaction' &&
                             item.status !== 'cancelled' &&
                             item.status !== 'completed' &&
@@ -512,7 +512,7 @@ export default function ListComponent({
                               </Tooltip>
                             )
                           ) : (
-                            title !== 'Transaction' && !isContactUsPage &&
+                            title !== 'Transaction' && !isContactUsPage && !isTickets && 
                             onDelete && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
