@@ -2,17 +2,24 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Image as ImageIcon } from 'lucide-react';
-// import { DeleteEntity } from '@/components/demo/utils/DeleteEntity';
-// import Loader from '@/components/demo/utils/Loader';
-// import { useNotification } from '@/components/ui/NotificationContext';
 import Image from 'next/image';
+import { Image as ImageIcon } from 'lucide-react';
+
 import apiClient from '@/lib/apiClient';
 import ListComponent from '@/components/ListComponent';
+import CustomModal from '@/components/CustomModal';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator, } from '@/components/ui/breadcrumb';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 import Link from 'next/link';
-// import { StatusEntity } from '@/components/demo/utils/StatusEntity';
+// import Loader from '@/components/demo/utils/Loader';
+// import { useNotification } from '@/components/ui/NotificationContext';
 
 interface User {
   id: string;
@@ -28,12 +35,13 @@ interface User {
 interface Column {
   key: string;
   header: string;
-  render?: (item: User) => JSX.Element;
+  render?: (item: User) => React.ReactElement;
 }
 
 const AdminsListPage: React.FC = () => {
   const router = useRouter();
-//   const { addNotification } = useNotification();
+  // const { addNotification } = useNotification();
+
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -42,43 +50,53 @@ const AdminsListPage: React.FC = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  // status / delete modals
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: currentPage.toString(),
-        limit: itemsPerPage.toString(),
-        ...(searchTerm.trim() && { search: searchTerm.trim() }),
-      });
-
-      const response = await apiClient.get(`/v1/admin/?${params}`, {
+      const response = await apiClient.get('/auth/V1/get-all', {
         withCredentials: true,
+        params: {
+          page: currentPage,
+          limit: itemsPerPage,
+          ...(searchTerm.trim() && { search: searchTerm.trim() }),
+        },
       });
 
-      const { data, total } = response.data;
+      // Expected backend result from getAllAdmin:
+      // {
+      //   success: true,
+      //   message: 'Admins fetched successfully',
+      //   data: [...],
+      //   pagination: { totalItems, totalPages, currentPage, limit }
+      // }
+      const { data, pagination } = response.data;
 
-      const transformedUsers: User[] = data.map((user: any) => ({
+      const transformedUsers: User[] = (data || []).map((user: any) => ({
         id: user.id || '',
         fullname: user.fullname || '',
         email: user.email || '',
         mobile: user.mobile || '',
         role: user.role || '',
         profile_pic: user.profile_pic || '',
-        is_active: user.is_active || false,
-        created_at: user.created_at || '',
+        is_active: !!user.is_active,
+        created_at: user.created_at || user.createdAt || '',
       }));
 
-      //console.log(transformedUsers, "transformedUserstransformedUserstransformedUsers")
-
       setUsers(transformedUsers);
-      setTotalItems(total);
+      setTotalItems(pagination?.totalItems ?? transformedUsers.length);
     } catch (error: any) {
       console.error('Error fetching users:', error);
-    //   addNotification({
-    //     title: 'Error',
-    //     description: 'Failed to fetch users.',
-    //     variant: 'destructive',
-    //   });
+      // addNotification({
+      //   title: 'Error',
+      //   description: 'Failed to fetch users.',
+      //   variant: 'destructive',
+      // });
     } finally {
       setIsLoading(false);
     }
@@ -92,48 +110,62 @@ const AdminsListPage: React.FC = () => {
     return () => clearTimeout(delayDebounce);
   }, [searchTerm, currentPage, itemsPerPage]);
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteAdmin = async (id: string) => {
+    if (!id) return;
     setIsLoading(true);
     try {
-    //   const success = await DeleteEntity('Admin', id, addNotification);
-    //   if (success) {
-    //     setUsers((prev) => prev.filter((user) => user.id !== id));
-    //     setTotalItems((prev) => prev - 1);
-    //   }
+      await apiClient.delete(`/auth/V1/delete-by-id/${id}`, {
+        withCredentials: true,
+      });
+
+      // Optimistic refresh
+      await fetchUsers();
+
+      // addNotification({
+      //   title: 'Success',
+      //   description: 'Admin deleted successfully.',
+      //   variant: 'default',
+      // });
+    } catch (error: any) {
+      console.error('Error deleting admin:', error);
+      // addNotification({
+      //   title: 'Error',
+      //   description: error?.response?.data?.message || 'Failed to delete admin.',
+      //   variant: 'destructive',
+      // });
     } finally {
       setIsLoading(false);
+      setDeleteDialog(false);
+      setDeleteId(null);
     }
   };
 
   const handleStatusToggle = async (id: string) => {
+    if (!id) return;
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const currentStatus = users.find((u) => u.id === id)?.is_active ?? false;
+      await apiClient.patch(`/auth/V1/update-status/${id}`, null, {
+        withCredentials: true,
+      });
 
-    //   await StatusEntity(
-    //     'Admin',
-    //     id,
-    //     currentStatus,
-    //     setUsers,
-    //     users,
-    //     // addNotification,
-    //     'is_active'
-    //   );
+      await fetchUsers();
 
-      setUsers((prevUsers) =>
-        prevUsers.map((user) =>
-          user.id === id ? { ...user, is_active: !currentStatus } : user
-        )
-      );
-    } catch (error) {
+      // addNotification({
+      //   title: 'Success',
+      //   description: 'Admin status updated successfully.',
+      //   variant: 'default',
+      // });
+    } catch (error: any) {
       console.error('Error toggling status:', error);
-    //   addNotification({
-    //     title: 'Error',
-    //     description: 'Failed to toggle user status.',
-    //     variant: 'destructive',
-    //   });
+      // addNotification({
+      //   title: 'Error',
+      //   description: error?.response?.data?.message || 'Failed to update admin status.',
+      //   variant: 'destructive',
+      // });
     } finally {
       setIsLoading(false);
+      setOpenDialog(false);
+      setSelectedId(null);
     }
   };
 
@@ -143,7 +175,10 @@ const AdminsListPage: React.FC = () => {
       header: 'Profile Picture',
       render: (item) =>
         item.profile_pic ? (
-          <div className="relative h-10 w-10 rounded-md overflow-hidden cursor-pointer" onClick={() => setPreviewImage(item.profile_pic || null)}>
+          <div
+            className="relative h-10 w-10 rounded-md overflow-hidden cursor-pointer"
+            onClick={() => setPreviewImage(item.profile_pic || null)}
+          >
             <Image
               src={item.profile_pic}
               fill
@@ -177,7 +212,7 @@ const AdminsListPage: React.FC = () => {
           onClick={() => router.push(`/admin/view/${item.id}`)}
           className="hover:text-violet-600 transition-colors"
         >
-          {item.email || "-"}
+          {item.email || '-'}
         </button>
       ),
     },
@@ -189,7 +224,7 @@ const AdminsListPage: React.FC = () => {
           onClick={() => router.push(`/admin/view/${item.id}`)}
           className="hover:text-violet-600 transition-colors"
         >
-          {item.mobile || "-"}
+          {item.mobile || '-'}
         </button>
       ),
     },
@@ -229,8 +264,14 @@ const AdminsListPage: React.FC = () => {
           viewRoute={(id: string) => `/admin/view/${id}`}
           deleteEndpoint={(id: string) => `/v1/admin/delete/${id}`}
           statusToggleEndpoint={(id: string) => `/v1/admin/toggle-status/${id}`}
-          onStatusToggle={handleStatusToggle}
-          onDelete={handleDelete}
+          onStatusToggle={async (id: string) => {
+            setSelectedId(id);
+            setOpenDialog(true);
+          }}
+          onDelete={async (id: string) => {
+            setDeleteId(id);
+            setDeleteDialog(true);
+          }}
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
           itemsPerPage={itemsPerPage}
@@ -241,6 +282,7 @@ const AdminsListPage: React.FC = () => {
           statusField="is_active"
         />
 
+        {/* Image Preview Modal */}
         {previewImage && (
           <div
             className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
@@ -266,6 +308,32 @@ const AdminsListPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Status Confirm Modal */}
+        <CustomModal
+          isOpen={openDialog}
+          onRequestClose={() => {
+            setOpenDialog(false);
+            setSelectedId(null);
+          }}
+          title="Confirm Status Update"
+          description="Are you sure you want to update the status of this admin?"
+          onConfirm={() => selectedId && handleStatusToggle(selectedId)}
+          confirmText="Confirm"
+        />
+
+        {/* Delete Confirm Modal */}
+        <CustomModal
+          isOpen={deleteDialog}
+          onRequestClose={() => {
+            setDeleteDialog(false);
+            setDeleteId(null);
+          }}
+          title="Confirm Delete"
+          description="Are you sure you want to delete this admin?"
+          onConfirm={() => deleteId && handleDeleteAdmin(deleteId)}
+          confirmText="Delete"
+        />
       </ContentLayout>
     </div>
   );

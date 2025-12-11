@@ -1,8 +1,15 @@
 'use client';
 
 import { ContentLayout } from '@/components/admin-panel/content-layout';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { User, Phone, Mail, Key, UploadIcon, User2Icon } from 'lucide-react';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
+import { User, Phone, Mail, Key, UploadIcon, User2Icon, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,8 +21,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
-import { Eye, EyeOff } from 'lucide-react';
-
+import { usePresignedUpload } from '@/hooks/usePresignedUpload'; // <-- use your actual path
 
 interface FormData {
   id?: string;
@@ -25,105 +31,106 @@ interface FormData {
   role: string;
   password: string;
   confirmPassword?: string;
-  profile_pic: File | string | null;
+  profile_pic: File | string | null; // will store URL string after upload
 }
-
-
 
 const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly = false }) => {
   const router = useRouter();
-//   const { addNotification } = useNotification();
+  // const { addNotification } = useNotification();
+
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isImageEnlarged, setIsImageEnlarged] = useState(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+
   const [formData, setFormData] = useState<FormData>({
     fullname: '',
     mobile: '',
     email: '',
     role: 'admin',
     password: '',
+    confirmPassword: '',
     profile_pic: null,
   });
+
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // presigned upload hook
+  const { uploading: imageUploading, uploadFiles } = usePresignedUpload('admin-profile', false);
 
+  // Fetch admin by ID for edit/view (backend uses req.user, so no id in URL)
   useEffect(() => {
-    if (id) {
-      setIsLoading(true);
-      //console.log("Fetching user for ID:", id);
+    if (!id) return;
 
-      apiClient.get(`/v1/admin/get-by-id/${id}`, { withCredentials: true })
-        .then((response) => {
-          //console.log("API response:", response);
+    setIsLoading(true);
 
-          const user = response.data.admin;
-          if (!user || !user.id) {
-            throw new Error('Invalid user data received.');
-          }
+    apiClient
+      .get(`auth/V1/get-admin`, { withCredentials: true })
+      .then((response) => {
+        // backend: { success, message, data: admin }
+        const user = response?.data?.data;
 
-          //console.log("Parsed user data:", user);
+        if (!user || !user.id) {
+          throw new Error('Invalid user data received.');
+        }
 
-          const updatedForm = {
-            id: user.id,
-            fullname: user.fullname || '',
-            mobile: user.mobile || '',
-            email: user.email || '',
-            role: user.role || 'admin',
-            password: '',
-            profile_pic: user.profile_pic || null,
-          };
+        const updatedForm: FormData = {
+          id: String(user.id),
+          fullname: user.fullname || '',
+          mobile: user.mobile || '',
+          email: user.email || '',
+          role: user.role || 'admin',
+          password: '',
+          confirmPassword: '',
+          profile_pic: user.profile_pic || null,
+        };
 
-          //console.log("Setting form data:", updatedForm);
-
-          setFormData(updatedForm);
-          setImagePreview(user.profile_pic || null);
-        })
-        .catch((error) => {
-          console.error('Error fetching user:', error);
-        //   addNotification({
-        //     title: 'Error',
-        //     description: error.message || 'Failed to fetch user data.',
-        //     variant: 'destructive',
-        //   });
-        })
-        .finally(() => setIsLoading(false));
-    }
-  }, [id,]);
-//   }, [id, addNotification]);
+        setFormData(updatedForm);
+        setImagePreview(user.profile_pic || null);
+      })
+      .catch((error) => {
+        console.error('Error fetching user:', error);
+        // addNotification({
+        //   title: 'Error',
+        //   description: error.message || 'Failed to fetch user data.',
+        //   variant: 'destructive',
+        // });
+      })
+      .finally(() => setIsLoading(false));
+  }, [id]);
 
   const handleCancel = () => {
     router.push('/admin/list');
   };
 
-
-
   const validateForm = () => {
     const newErrors: Partial<FormData> = {};
+
     if (!formData.fullname) newErrors.fullname = 'Name is required';
     else if (formData.fullname.length < 2) newErrors.fullname = 'Name must be at least 2 characters';
     else if (formData.fullname.length > 255) newErrors.fullname = 'Name cannot exceed 255 characters';
 
     if (!formData.mobile) newErrors.mobile = 'Mobile number is required';
-    else if (!/^\+?[0-9]+$/.test(formData.mobile)) newErrors.mobile = 'Mobile number must contain only digits and optionally start with +';
-    else if (formData.mobile.length < 10 || formData.mobile.length > 13) newErrors.mobile = 'Mobile number must be 10 digits';
+    else if (!/^\+?[0-9]+$/.test(formData.mobile))
+      newErrors.mobile = 'Mobile number must contain only digits and optionally start with +';
+    else if (formData.mobile.length < 10 || formData.mobile.length > 13)
+      newErrors.mobile = 'Mobile number must be 10 digits';
 
     if (!formData.email) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Email must be a valid email address';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+      newErrors.email = 'Email must be a valid email address';
     else if (formData.email.length > 255) newErrors.email = 'Email cannot exceed 255 characters';
 
     if (!formData.role) newErrors.role = 'Role is required';
-    else if (!['vendor', 'admin', 'customer'].includes(formData.role)) newErrors.role = 'Role must be one of: vendor, admin, customer';
+    else if (!['vendor', 'admin', 'customer'].includes(formData.role))
+      newErrors.role = 'Role must be one of: vendor, admin, customer';
 
     // Password validation
     if (!id && !formData.password) {
       newErrors.password = 'Password is required';
-    } else if (
-      formData.password &&
-      (formData.password.length < 6 || formData.password.length > 255)
-    ) {
+    } else if (formData.password && (formData.password.length < 6 || formData.password.length > 255)) {
       newErrors.password = 'Password must be between 6 and 255 characters';
     }
 
@@ -136,29 +143,39 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
       }
     }
 
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // use presigned upload hook for image
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 1024 * 1024) {
-        // addNotification({
-        //   title: 'Error',
-        //   description: 'Image size must not exceed 1MB.',
-        //   variant: 'destructive',
-        // });
+    if (!file) return;
+
+    if (file.size > 1024 * 1024) {
+      console.error('Image size must not exceed 1MB.');
+      // addNotification({ ... });
+      return;
+    }
+
+    try {
+      // upload to S3 via presigned URL
+      const uploadedUrl = (await uploadFiles([file])) as string | undefined;
+
+      if (!uploadedUrl) {
+        console.error('Upload failed, no URL returned');
         return;
       }
-      setFormData({ ...formData, profile_pic: file });
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+
+      // store URL in formData, and use it as preview
+      setFormData((prev) => ({
+        ...prev,
+        profile_pic: uploadedUrl,
+      }));
+      setImagePreview(uploadedUrl);
+    } catch (err) {
+      console.error('Image upload failed:', err);
     }
   };
 
@@ -167,40 +184,40 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
     if (readOnly) return;
 
     if (!validateForm()) {
-    //   addNotification({
-    //     title: 'Error',
-    //     description: 'Please fix the form errors before submitting.',
-    //     variant: 'destructive',
-    //   });
+      // addNotification({
+      //   title: 'Error',
+      //   description: 'Please fix the form errors before submitting.',
+      //   variant: 'destructive',
+      // });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const form = new FormData();
-      if (formData.id) form.append('id', formData.id);
-      form.append('fullname', formData.fullname);
-      form.append('mobile', formData.mobile);
-      form.append('email', formData.email);
-      form.append('role', formData.role);
-      if (formData.password) form.append('password', formData.password);
-      if (formData.profile_pic instanceof File) {
-        form.append('profile_pic', formData.profile_pic);
-      } else if (formData.id && formData.profile_pic) {
-        form.append('profile_pic', formData.profile_pic);
+      const payload: any = {
+        fullname: formData.fullname,
+        mobile: formData.mobile,
+        email: formData.email,
+        role: formData.role,
+      };
+
+      if (formData.id) payload.id = formData.id;
+      if (formData.password) payload.password = formData.password;
+      if (typeof formData.profile_pic === 'string') {
+        payload.profile_pic = formData.profile_pic; // S3 public URL
       }
 
-      const response = await apiClient.post('/v1/admin/register-new-admin', form, {
+      // send JSON, NOT multipart
+      const response = await apiClient.post('/auth/V1/register', payload, {
         withCredentials: true,
-        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-    //   addNotification({
-    //     title: 'Success',
-    //     description: formData.id ? 'Admin updated successfully!' : 'Admin created successfully!',
-    //     variant: 'default',
-    //   });
+      // addNotification({
+      //   title: 'Success',
+      //   description: formData.id ? 'Admin updated successfully!' : 'Admin created successfully!',
+      //   variant: 'default',
+      // });
 
       setFormData({
         fullname: '',
@@ -208,17 +225,18 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
         email: '',
         role: 'admin',
         password: '',
+        confirmPassword: '',
         profile_pic: null,
       });
       setImagePreview(null);
       router.push('/admin/list');
     } catch (error: any) {
-      console.error('Submission error:', error.response?.data || error.message);
-    //   addNotification({
-    //     title: 'Error',
-    //     description: error.response?.data?.message || error.message || 'Failed to save user.',
-    //     variant: 'destructive',
-    //   });
+      console.error('Submission error:', error?.response?.data || error?.message);
+      // addNotification({
+      //   title: 'Error',
+      //   description: error?.response?.data?.message || error?.message || 'Failed to save user.',
+      //   variant: 'destructive',
+      // });
     } finally {
       setIsLoading(false);
     }
@@ -238,11 +256,7 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              {/* <Link href="/" prefetch={false}>
-                Home
-              </Link> */}
-            </BreadcrumbLink>
+            <BreadcrumbLink asChild>{/* <Link href="/" prefetch={false}>Home</Link> */}</BreadcrumbLink>
           </BreadcrumbItem>
           {/* <BreadcrumbSeparator /> */}
           <BreadcrumbItem>
@@ -262,9 +276,7 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>
-              {id ? (readOnly ? 'View Admin' : 'Edit Admin') : 'Add Admin'}
-            </BreadcrumbPage>
+            <BreadcrumbPage>{id ? (readOnly ? 'View Admin' : 'Edit Admin') : 'Add Admin'}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -307,7 +319,6 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
                         title="Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9"
                         maxLength={10}
                       />
-
                       {errors.mobile && <div className="text-red-500 text-sm">{errors.mobile}</div>}
                     </div>
 
@@ -326,16 +337,13 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
                       />
                       {errors.email && <div className="text-red-500 text-sm">{errors.email}</div>}
                     </div>
+
                     <div>
                       <Label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
                         <User2Icon className="w-5 h-5 mr-2" />
                         Role <span className="text-red-500">*</span>
                       </Label>
-                      <Select
-                        value={formData.role}
-                        onValueChange={handleRoleChange}
-                        disabled={readOnly}
-                      >
+                      <Select value={formData.role} onValueChange={handleRoleChange} disabled={readOnly}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select role" />
                         </SelectTrigger>
@@ -359,7 +367,7 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
                           onChange={handleChange}
                           placeholder="Enter password"
                           disabled={readOnly}
-                          className="pr-10" // space for icon
+                          className="pr-10"
                         />
                         {!readOnly && (
                           <button
@@ -371,12 +379,8 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
                           </button>
                         )}
                       </div>
-                      {errors.password && (
-                        <div className="text-red-500 text-sm">{errors.password}</div>
-                      )}
+                      {errors.password && <div className="text-red-500 text-sm">{errors.password}</div>}
                     </div>
-
-
 
                     <div>
                       <Label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
@@ -407,48 +411,8 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
                         <div className="text-red-500 text-sm">{errors.confirmPassword}</div>
                       )}
                     </div>
-
                   </div>
                 </div>
-
-                {/* <div className="w-full md:w-1/2 p-8 bg-white">
-                  <div className="space-y-6">
-                    <div>
-                      <Label className="flex items-center text-sm font-semibold text-gray-700 mb-2">
-                        <UploadIcon className="w-5 h-5 mr-2" />
-                        Profile Picture
-                      </Label>
-                      <div className="w-full h-72 border-2 border-dashed border-indigo-300 rounded-xl flex items-center justify-center relative cursor-pointer hover:border-indigo-400 transition">
-                        {imagePreview ? (
-                          <Image
-                            src={imagePreview}
-                            alt="Profile Picture Preview"
-                            fill
-                            className="max-h-full max-w-full object-contain rounded-lg"
-                          />
-                        ) : (
-                          <div className="flex flex-col justify-center items-center">
-                            <UploadIcon className="w-8 h-8 mb-2 text-gray-400 text-center" />
-                            <span className="text-black text-[18px] font-semibold">
-                              {readOnly ? 'No Image' : 'Choose a file or drop it here'}
-                            </span>
-                            {!readOnly && (
-                              <span className="text-gray-400 text-[13px]">JPEG, PNG formats, up to 1MB</span>
-                            )}
-                          </div>
-                        )}
-                        {!readOnly && (
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div> */}
 
                 <div className="w-full md:w-1/2 p-8 bg-white">
                   <div className="space-y-6">
@@ -465,18 +429,17 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
                             fill
                             className="max-h-full max-w-full object-contain rounded-lg cursor-pointer"
                             onClick={() => {
-                              setEnlargedImage(imagePreview)
-                              setIsImageEnlarged(true)
+                              setEnlargedImage(imagePreview);
+                              setIsImageEnlarged(true);
                             }}
                           />
                         ) : (
                           <div className="flex flex-col justify-center items-center">
                             <UploadIcon className="w-8 h-8 mb-2 text-gray-400 text-center" />
-                            {/* <span className="text-black text-[18px] font-semibold">
-              {readOnly ? 'No Image' : 'Choose a file or drop it here'}
-            </span> */}
                             {!readOnly && (
-                              <span className="text-gray-400 text-[13px]">JPEG, PNG formats, up to 1MB</span>
+                              <span className="text-gray-400 text-[13px]">
+                                JPEG, PNG formats, up to 1MB
+                              </span>
                             )}
                           </div>
                         )}
@@ -491,8 +454,12 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
                           />
                         </div>
                       )}
+                      {imageUploading && (
+                        <div className="text-xs text-gray-500 mt-1">Uploading image...</div>
+                      )}
                     </div>
                   </div>
+
                   {isImageEnlarged && enlargedImage && (
                     <div
                       className="fixed inset-0 z-50 bg-black bg-opacity-75 flex items-center justify-center"
@@ -522,13 +489,13 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
                   <Button
                     type="submit"
                     className="px-6 py-3 rounded-lg shadow-md transition transform hover:scale-105"
-                    disabled={isLoading}
+                    disabled={isLoading || imageUploading}
                   >
                     {id ? 'Update' : 'Submit'}
                   </Button>
                 )}
                 <Button
-                  type='button'
+                  type="button"
                   variant="outline"
                   onClick={handleCancel}
                   disabled={isLoading}
