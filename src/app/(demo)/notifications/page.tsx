@@ -7,7 +7,6 @@ import ListComponent from '@/components/ListComponent';
 import apiClient from '@/lib/apiClient';
 import { toast } from 'sonner';
 import CustomModal from '@/components/CustomModal';
-
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,7 +22,7 @@ interface Technician {
   id: string;
   fullname: string;
   mobile: string;
-  service_type: 'general' | 'emergency' | null;
+  service_type: 'subscription' | 'emergency' | null;
 }
 
 interface Customer {
@@ -45,13 +44,9 @@ interface SentNotification {
 
 export default function NotificationsPage() {
   const [activeTab, setActiveTab] = useState<'technician' | 'customer'>('technician');
-
-  // Form
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [scheduleDate, setScheduleDate] = useState('');
-
-  // Recipients Data (Server-side Pagination)
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [techTotal, setTechTotal] = useState(0);
@@ -59,25 +54,19 @@ export default function NotificationsPage() {
   const [techPage, setTechPage] = useState(1);
   const [custPage, setCustPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [techFilter, setTechFilter] = useState<'all' | 'general' | 'emergency'>('all');
-
-  // Selection
+  const [techFilter, setTechFilter] = useState<'all' | 'subscription' | 'emergency'>('all');
   const [selectedTechnicianIds, setSelectedTechnicianIds] = useState<string[]>([]);
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
-
-  // History
   const [sentNotifications, setSentNotifications] = useState<SentNotification[]>([]);
   const [historyPage, setHistoryPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-
-  // Delete
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [notificationLimit, setNotificationLimit] = useState(10);
 
-  // Fetch Technicians with pagination + filter
   const fetchTechnicians = async () => {
     try {
       const res = await apiClient.get('/technicians/V1/get-all', {
@@ -94,7 +83,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // Fetch Customers with pagination
   const fetchCustomers = async () => {
     try {
       const res = await apiClient.get('/auth/V1/get-all-customers', {
@@ -107,11 +95,10 @@ export default function NotificationsPage() {
     }
   };
 
-  // Fetch History
   const fetchSentNotifications = async () => {
     try {
       const res = await apiClient.get('/auth/V1/get-all-notification', {
-        params: { page: historyPage, limit: 10, search: searchQuery || undefined },
+        params: { page: historyPage, limit: notificationLimit, search: searchQuery || undefined },
       });
       setSentNotifications(res.data.data || []);
       setTotal(res.data.pagination?.totalItems || 0);
@@ -124,13 +111,12 @@ export default function NotificationsPage() {
     if (activeTab === 'technician') fetchTechnicians();
     if (activeTab === 'customer') fetchCustomers();
     fetchSentNotifications();
-  }, [activeTab, techPage, custPage, techFilter, historyPage, searchQuery]);
+  }, [activeTab, techPage, notificationLimit, custPage, techFilter, historyPage, searchQuery]);
 
   useEffect(() => {
     setLoading(false);
   }, []);
 
-  // Select All on current page (FIXED)
   const selectAllTechnicians = (checked: boolean) => {
     if (checked) {
       const allIds = technicians.map(t => t.id);
@@ -150,10 +136,8 @@ export default function NotificationsPage() {
   };
 
   const handleSendNotification = async () => {
-    
     if (!title.trim()) return toast.error('Title is required');
     if (message.trim().length < 5) return toast.error('Message must be at least 5 characters');
-    alert(3)
     const recipientIds = activeTab === 'technician' ? selectedTechnicianIds : selectedCustomerIds;
     if (recipientIds.length === 0) return toast.error('Select at least one recipient');
 
@@ -199,13 +183,12 @@ export default function NotificationsPage() {
     { key: 'title', header: 'Title', render: (n: any) => <span className="font-medium">{n.title}</span> },
     { key: 'description', header: 'Message', render: (n: any) => <span className="max-w-md truncate block">{n.description || n.message}</span> },
     // { key: 'recipient_type', header: 'Sent To', render: (n: any) => <span className="capitalize">{n.recipient_type}s ({n.recipient_count})</span> },
-    { key: 'createdAt', header: 'Sent On', render: (n: any) => format(new Date(n.createdAt), 'dd MMM yyyy, hh:mm a') },
+    { key: 'createdAt', header: 'Sent On', render: (n: any) => format(new Date(n.createdAt), 'dd MMM yyyy')},
   ];
 
   return (
     <ContentLayout title="Send Notifications">
       <div className="space-y-8">
-
         <Card>
           <CardHeader><CardTitle>Send New Notification</CardTitle></CardHeader>
           <CardContent>
@@ -216,7 +199,7 @@ export default function NotificationsPage() {
                 <div>
                   <Label>Title *</Label>
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter title" className="mt-2" />
-                  <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
+                  {/* <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p> */}
                 </div>
                 <div>
                   <Label>Message * (min 5 chars)</Label>
@@ -251,7 +234,7 @@ export default function NotificationsPage() {
 
                   <TabsContent value="technician" className="space-y-4">
                     <div className="flex gap-2 flex-wrap">
-                      {(['all', 'general', 'emergency'] as const).map(f => (
+                      {(['all', 'subscription', 'emergency'] as const).map(f => (
                         <Button key={f} variant={techFilter === f ? 'default' : 'outline'} size="sm"
                           onClick={() => { setTechFilter(f); setTechPage(1); }}>
                           {f.charAt(0).toUpperCase() + f.slice(1)} (
@@ -294,7 +277,7 @@ export default function NotificationsPage() {
                               <TableCell>{t.mobile}</TableCell>
                               <TableCell>
                                 <span className={`px-2 py-1 text-xs rounded-full ${t.service_type === 'emergency' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                                  {t.service_type || 'General'}
+                                  {t.service_type || 'Subscription'}
                                 </span>
                               </TableCell>
                             </TableRow>
@@ -400,8 +383,8 @@ export default function NotificationsPage() {
               isLoading={loading}
               currentPage={historyPage}
               setCurrentPage={setHistoryPage}
-              itemsPerPage={10}
-              setItemsPerPage={() => {}}
+              itemsPerPage={notificationLimit}
+              setItemsPerPage={setNotificationLimit}
               totalItems={total}
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}

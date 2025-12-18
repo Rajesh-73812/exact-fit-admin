@@ -1,7 +1,6 @@
 'use client';
-
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
@@ -12,12 +11,25 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
-import CustomModal from '@/components/CustomModal';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface Ticket {
   id: string;
@@ -29,20 +41,70 @@ interface Ticket {
   status: string;
   createdAt: string;
   updatedAt?: string | null;
-  deletedAt?: string | null;
 }
 
 export default function TicketViewPage() {
-  const router = useRouter();
   const { id } = useParams() as { id?: string };
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [deleting, setDeleting] = useState<boolean>(false);
-  const [deleteDialog, setDeleteDialog] = useState<boolean>(false);
-
-  // slider state
+  const [updatingStatus, setUpdatingStatus] = useState<boolean>(false);
   const [activeIndex, setActiveIndex] = useState<number>(0);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+  const [technician, setTechnician] = useState<string>("");
+  const [notes, setNotes] = useState<string>("");
+  const [technicians, setTechnicians] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadTechnicians = async () => {
+      try {
+        const { data } = await apiClient.get("/technicians/V1/get-all");
+        setTechnicians(data.data.rows);
+      } catch (err) {
+        console.error("Failed to load technicians");
+      }
+    };
+    loadTechnicians();
+  }, []);
+
+  const formatStatusForUI = (status: string) =>
+    status.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+  const formatStatusForBackend = (status: string) => {
+    switch (status) {
+      case "Open": return "open";
+      case "In Progress": return "in_progress";
+      case "Completed": return "completed";
+      case "Pending": return "pending";
+      default: return status.toLowerCase().replace(" ", "_");
+    }
+  };
+
+  const getAvailableStatuses = (current: string) => {
+  const uiCurrent = backendToUI(current);
+
+  switch (current) {
+    case "open":
+      return [uiCurrent, "Pending", "In Progress", "Hold", "Completed"];
+
+    case "pending":
+      return [uiCurrent, "Open", "In Progress", "Hold", "Completed"];
+
+    case "in_progress":
+      return [uiCurrent, "Open", "Pending", "Hold", "Completed"];
+
+    case "hold":
+      return [uiCurrent, "Open", "Pending", "In Progress", "Completed"];
+
+    case "completed":
+      return [uiCurrent]; // completed cannot change
+
+    default:
+      return [uiCurrent];
+  }
+};
+
 
   const normalizeImages = useCallback((raw: any): string[] => {
     if (!raw) return [];
@@ -57,220 +119,243 @@ export default function TicketViewPage() {
     const loadTicket = async () => {
       setLoading(true);
       try {
-        // Try single-ticket endpoint first
         const res = await apiClient.get(`/ticket/V1/view-ticket/${id}`);
-        const payload = res.data?.data ?? res.data;
-        if (!payload) throw new Error('Ticket payload empty');
-        const imgs = normalizeImages(payload.image_url);
+        const data = res.data?.data ?? res.data;
+
         setTicket({
-          id: payload.id,
-          ticketNumber: payload.ticketNumber,
-          user_id: payload.user_id,
-          title: payload.title || '—',
-          description: payload.description || '',
-          image_url: imgs,
-          status: payload.status || 'pending',
-          createdAt: payload.createdAt || new Date().toISOString(),
-          updatedAt: payload.updatedAt || null,
-          deletedAt: payload.deletedAt || null,
+          id: data.id,
+          ticketNumber: data.ticketNumber,
+          user_id: data.user_id,
+          title: data.title,
+          description: data.description,
+          image_url: normalizeImages(data.image_url),
+          status: data.status.toLowerCase(),
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt,
         });
-        setActiveIndex(0);
-      } catch (err: any) {
-        // fallback: fetch list and find
-        try {
-          const res = await apiClient.get('/ticket/V1/get-all-ticket', { params: { page: 1, limit: 1000 } });
-          const list = res.data?.data ?? [];
-          const found = list.find((t: any) => t.id === id);
-          if (!found) {
-            toast.error(err.response?.data?.message || 'Ticket not found');
-            return;
-          }
-          const imgs = normalizeImages(found.image_url);
-          setTicket({
-            id: found.id,
-            ticketNumber: found.ticketNumber,
-            user_id: found.user_id,
-            title: found.title || '—',
-            description: found.description || '',
-            image_url: imgs,
-            status: found.status || 'pending',
-            createdAt: found.createdAt || new Date().toISOString(),
-            updatedAt: found.updatedAt || null,
-            deletedAt: found.deletedAt || null,
-          });
-          setActiveIndex(0);
-        } catch (innerErr) {
-          console.error('Failed to load ticket:', innerErr);
-          toast.error('Failed to load ticket');
-        }
+      } catch (err) {
+        toast.error("Failed to load ticket");
       } finally {
         setLoading(false);
       }
     };
-
     loadTicket();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, normalizeImages]);
 
-  // keyboard navigation for slider (left / right)
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (!ticket?.image_url || ticket.image_url.length <= 1) return;
-      if (e.key === 'ArrowLeft') setActiveIndex(i => Math.max(0, i - 1));
-      if (e.key === 'ArrowRight') setActiveIndex(i => Math.min(ticket.image_url!.length - 1, i + 1));
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [ticket]);
+  const handleDirectStatusUpdate = async (status: string) => {
+    if (!ticket) return;
 
-  const handlePrev = () => {
-    if (!ticket?.image_url) return;
-    setActiveIndex(i => (i <= 0 ? ticket.image_url!.length - 1 : i - 1));
+    setUpdatingStatus(true);
+    try {
+      await apiClient.patch(`/ticket/V1/assign-and-update-status/${ticket.id}`, {
+        status,
+      });
+
+      setTicket({ ...ticket, status });
+      toast.success("Status updated successfully");
+    } catch {
+      toast.error("Failed to update status");
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
-  const handleNext = () => {
-    if (!ticket?.image_url) return;
-    setActiveIndex(i => (i >= ticket.image_url!.length - 1 ? 0 : i + 1));
+
+  const handleConfirmStatusUpdate = async () => {
+    if (!ticket || !selectedStatus) return;
+
+    setUpdatingStatus(true);
+
+    try {
+      await apiClient.patch(`/ticket/V1/assign/${ticket.id}`, {
+        status: selectedStatus,
+        technician_id: technician,
+        notes: notes,
+      });
+
+      setTicket({ ...ticket, status: selectedStatus });
+      toast.success("Status updated");
+      setShowModal(false);
+    } catch {
+      toast.error("Update failed");
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
+
+  const backendToUI = (status: string) => {
+  switch (status) {
+    case "open": return "Open";
+    case "in_progress": return "In Progress";
+    case "completed": return "Completed";
+    case "pending": return "Pending";
+    default: return status;
+  }
+};
 
 
   return (
     <ContentLayout title="Ticket Details">
+
+      {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
-          <BreadcrumbItem>
-            <Link href="/dashboard">Dashboard</Link>
-          </BreadcrumbItem>
+          <BreadcrumbItem><Link href="/dashboard">Dashboard</Link></BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <Link href="/tickets">Tickets</Link>
-          </BreadcrumbItem>
+          <BreadcrumbItem><Link href="/tickets">Tickets</Link></BreadcrumbItem>
           <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>View</BreadcrumbPage>
-          </BreadcrumbItem>
+          <BreadcrumbItem><BreadcrumbPage>View</BreadcrumbPage></BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <div className="mt-8 max-w-5xl mx-auto">
         <div className="bg-white rounded-xl shadow-sm border p-6">
-          {loading ? (
-            <p className="text-center py-12 text-gray-500">Loading…</p>
-          ) : ticket ? (
+
+          {/* Loading */}
+          {loading && <p className="text-center py-12">Loading…</p>}
+
+          {/* Ticket Loaded */}
+          {!loading && ticket && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Left: Images (span 2 columns on large) */}
-              {/* We place images in the first two columns on large screens */}
-              <div className="lg:col-span-2 space-y-4">
-                {/* Image area only if images exist */}
-                {Array.isArray(ticket.image_url) && ticket.image_url.length > 0 ? (
-                  <div className="relative bg-gray-50 border rounded-lg overflow-hidden">
-                    <div className="relative w-full h-96 bg-black/5 flex items-center justify-center">
-                      {/* Current image */}
-                      <Image
-                        src={ticket.image_url[activeIndex]}
-                        alt={`${ticket.title} - image ${activeIndex + 1}`}
-                        fill
-                        className="object-contain"
-                        unoptimized
-                      />
-                    </div>
 
-                    {/* Controls */}
-                    {ticket.image_url.length > 1 && (
-                      <>
-                        <button
-                          aria-label="Previous image"
-                          onClick={handlePrev}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow"
-                        >
-                          <ChevronLeft className="w-5 h-5" />
-                        </button>
-
-                        <button
-                          aria-label="Next image"
-                          onClick={handleNext}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow"
-                        >
-                          <ChevronRight className="w-5 h-5" />
-                        </button>
-
-                        {/* Indicator */}
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full">
-                          {ticket.image_url.map((_, idx) => (
-                            <button
-                              key={idx}
-                              aria-label={`Go to image ${idx + 1}`}
-                              onClick={() => setActiveIndex(idx)}
-                              className={`w-2 h-2 rounded-full ${idx === activeIndex ? 'bg-white' : 'bg-white/60'}`}
-                            />
-                          ))}
-                          <span className="ml-2 text-xs text-white/90">{activeIndex + 1}/{ticket.image_url.length}</span>
-                        </div>
-                      </>
-                    )}
+              {/* LEFT: IMAGES + MESSAGE */}
+              <div className="lg:col-span-2 space-y-6">
+                {ticket.image_url?.length ? (
+                  <div className="relative bg-gray-50 border rounded-lg h-96">
+                    <Image
+                      src={ticket.image_url[activeIndex]}
+                      alt="Ticket Image"
+                      fill
+                      className="object-contain"
+                      unoptimized
+                    />
                   </div>
                 ) : (
-                  // No images: don't show image box (or show placeholder)
-                  <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center text-gray-500">
-                    <p className="font-medium">No attachments</p>
-                    <p className="text-sm mt-2">This ticket has no images attached.</p>
+                  <div className="border border-dashed p-12 text-center">
+                    No images
                   </div>
                 )}
 
-                {/* Description / Message */}
-                <div className="bg-white p-4 rounded border">
-                  <Label className="text-xs">Message</Label>
-                  <div className="mt-2 text-sm whitespace-pre-wrap">{ticket.description || '—'}</div>
+                <div className="bg-muted/30 p-5 rounded-lg border">
+                  <Label className="text-xs font-medium">Message</Label>
+                  <p className="mt-2 text-sm">{ticket.description || "—"}</p>
                 </div>
               </div>
 
-              {/* Right column: metadata */}
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded border">
+              {/* RIGHT PANEL */}
+              <div className="space-y-5">
+
+                {/* Ticket Number */}
+                <div className="bg-muted/30 p-5 rounded-lg border">
                   <Label className="text-xs">Ticket Number</Label>
-                  <p className="mt-1 font-medium text-lg">{ticket.ticketNumber}</p>
+                  <p className="text-lg font-semibold mt-1">{ticket.ticketNumber}</p>
                 </div>
 
-                <div className="bg-white p-4 rounded border">
+                {/* Title */}
+                <div className="bg-muted/30 p-5 rounded-lg border">
                   <Label className="text-xs">Title</Label>
-                  <p className="mt-1 font-medium">{ticket.title}</p>
+                  <p className="font-medium mt-1">{ticket.title}</p>
                 </div>
 
-                <div className="bg-white p-4 rounded border">
+                {/* STATUS DROPDOWN */}
+                <div className="bg-muted/30 p-5 rounded-lg border">
                   <Label className="text-xs">Status</Label>
-                  <div className="mt-1">
-                    <span
-                      className={`inline-block px-3 py-1 text-xs font-medium rounded-full ${
-                        ticket.status === 'completed'
-                          ? 'bg-green-100 text-green-800'
-                          : ticket.status === 'in-progress'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}
-                    >
-                      {ticket.status}
-                    </span>
-                  </div>
+
+                  <Select
+                    value={backendToUI(ticket.status)}
+                    onValueChange={(uiValue) => {
+                      const backendValue = formatStatusForBackend(uiValue);
+
+                      if (backendValue === "completed") {
+                        handleDirectStatusUpdate(backendValue);
+                        return;
+                      }
+
+                      setSelectedStatus(backendValue);
+                      setShowModal(true);
+                    }}
+                    disabled={getAvailableStatuses(ticket.status).length === 0}
+                  >
+                    <SelectTrigger className={`mt-2 ${getStatusColor(ticket.status)} font-medium`}>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      {getAvailableStatuses(ticket.status).map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                <div className="bg-white p-4 rounded border">
-                  <Label className="text-xs">Submitted At</Label>
-                  <p className="mt-1 text-sm text-gray-600">{new Date(ticket.createdAt).toLocaleString('en-IN')}</p>
-                </div>
+                {/* MODAL */}
+                <Dialog open={showModal} onOpenChange={setShowModal}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Update Status</DialogTitle>
+                    </DialogHeader>
 
-                {ticket.updatedAt && (
-                  <div className="bg-white p-4 rounded border">
-                    <Label className="text-xs">Last Updated</Label>
-                    <p className="mt-1 text-sm text-gray-600">{new Date(ticket.updatedAt).toLocaleString('en-IN')}</p>
-                  </div>
-                )}
+                    <div className="space-y-4">
+                      {/* Technician */}
+                      <div>
+                        <Label>Technician</Label>
+                        <Select onValueChange={setTechnician}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Select technician" />
+                          </SelectTrigger>
+
+                          <SelectContent>
+                            {technicians.map((tech) => (
+                              <SelectItem key={tech.id} value={tech.id}>
+                                {tech.fullname} | {tech.mobile} | Type: {tech.service_type} 
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Notes */}
+                      <div>
+                        <Label>Notes</Label>
+                        <textarea
+                          className="w-full border rounded p-2 text-sm"
+                          rows={3}
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowModal(false)}
+                      >
+                        Cancel
+                      </Button>
+
+                      <Button onClick={handleConfirmStatusUpdate}>
+                        Update
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
               </div>
             </div>
-          ) : (
-            <p className="text-center py-12 text-gray-500">Ticket not found.</p>
           )}
+
         </div>
       </div>
-
     </ContentLayout>
   );
 }
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "completed": return "bg-green-100 text-green-800";
+    case "in_progress": return "bg-yellow-100 text-yellow-800";
+    default: return "bg-blue-100 text-blue-800";
+  }
+};

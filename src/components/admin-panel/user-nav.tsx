@@ -8,6 +8,14 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider} from "@/compo
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger} from "@/components/ui/dropdown-menu";
 
 export function UserNav() {
+  const handleSignOut = () => {
+     localStorage.removeItem('user_role')
+     localStorage.removeItem('token')
+     localStorage.removeItem('user_token')
+     localStorage.removeItem('user_id')
+     window.location.href = '/';
+  };
+
   return (
     <DropdownMenu>
       <TooltipProvider disableHoverableContent>
@@ -54,7 +62,7 @@ export function UserNav() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="hover:cursor-pointer" onClick={() => {}}>
+        <DropdownMenuItem className="hover:cursor-pointer" onClick={handleSignOut}>
           <LogOut className="w-4 h-4 mr-3 text-muted-foreground" />
           Sign out
         </DropdownMenuItem>

@@ -15,21 +15,23 @@ import ListComponent from '@/components/ListComponent';
 import CustomModal from '@/components/CustomModal';
 import apiClient from '@/lib/apiClient';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Service {
   title: string;
   service_slug: string;
   position: string;
+  type: string;
   status: 'active' | 'inactive';
   image_url?: string;
   image_alt?: string;
   createdAt: string;
-  productsCount?: number;
+  subserviceCount?: number;
   totalEarnings?: number;
 }
 
 interface ServiceAnalytics {
-  product: number;
+  subService: number;
   Earning: number;
   activeServiceCount: number;
   inactiveServiceCount: number;
@@ -44,14 +46,14 @@ export default function ServicesPage() {
   const [total, setTotal] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
-
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
-
+  const [filterType, setFilterType] = useState<'all' | 'subscription' | 'enquiry'>('all');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<ServiceAnalytics>({
-    product: 0,
+    subService: 0,
     Earning: 0,
     activeServiceCount: 0,
     inactiveServiceCount: 0,
@@ -61,19 +63,20 @@ export default function ServicesPage() {
     setIsLoading(true);
     try {
       const { data } = await apiClient.get('/service/V1/get-all-service', {
-        params: { page, limit: itemsPerPage, search: searchQuery || undefined },
+        params: { page, limit: itemsPerPage, search: searchQuery || undefined, filter: filterType === 'all' ? undefined : filterType },
       });
-
+      console.log(data, "ddddddddddddddddddd")
       const items = data.data || [];
       const transformed: Service[] = items.map((item: any) => ({
         title: item.title || '',
         service_slug: item.service_slug || '',
         position: item.position?.toString() || '',
+        type: item.type || '',
         status: item.status === 'active' ? 'active' : 'inactive',
         image_url: item.image_url || '',
         image_alt: item.image_alt || '',
         createdAt: item.createdAt || new Date().toISOString(),
-        productsCount: item.productsCount || 0,
+        subserviceCount: item.subserviceCount || 0,
         totalEarnings: item.totalEarnings || 0,
       }));
 
@@ -81,7 +84,7 @@ export default function ServicesPage() {
       setTotal(data.pagination?.total || 0);
 
       setAnalytics({
-        product: data.TotalProduct || 0,
+        subService: data.totalSubserviceCount || 0,
         Earning: data.TotalEarning || 0,
         activeServiceCount: data.activeCount || 0,
         inactiveServiceCount: data.inactiveCount || 0,
@@ -95,9 +98,8 @@ export default function ServicesPage() {
 
   useEffect(() => {
     fetchServices();
-  }, [page, itemsPerPage, searchQuery]);
+  }, [page, itemsPerPage, searchQuery, filterType]);
 
-  // Make handlers async → matches ListComponent's expected signature
   const handleStatusToggle = async (slug: string) => {
     try {
       setIsLoading(true);
@@ -132,7 +134,7 @@ export default function ServicesPage() {
       header: 'Image',
       render: (item: Service) =>
         item.image_url ? (
-          <div className="relative h-10 w-10 rounded-md overflow-hidden">
+          <div className="relative h-10 w-10 rounded-md overflow-hidden cursor-pointer" onClick={() => { setPreviewImage(item.image_url || null) }}>
             <Image
               src={item.image_url}
               alt={item.image_alt || 'Service Image'}
@@ -160,14 +162,19 @@ export default function ServicesPage() {
       ),
     },
     {
+      key: 'type',
+      header: 'Type',
+      render: (item: Service) => < span className="text-center">{item.type.charAt(0).toUpperCase() + item.type.slice(1)}</span>
+    },
+    {
       key: 'position',
       header: 'Position',
       render: (item: Service) => <span className="text-center">{item.position}</span>,
     },
     {
-      key: 'productsCount',
+      key: 'subserviceCount',
       header: 'Total SubServices',
-      render: (item: Service) => <span className="text-center">{item.productsCount ?? 0}</span>,
+      render: (item: Service) => <span className="text-center">{item.subserviceCount ?? 0}</span>,
     },
     {
       key: 'totalEarnings',
@@ -190,10 +197,10 @@ export default function ServicesPage() {
               </div>
               <h4 className="text-xs font-semibold text-[#E31E24] uppercase">Total Sub Services</h4>
             </div>
-            <p className="text-xl font-bold text-gray-900">{analytics.product}</p>
+            <p className="text-xl font-bold text-gray-900">{analytics.subService}</p>
             <div className="flex items-center gap-1 text-xs text-gray-500">
-              <TrendingUp className="h-3 w-3 text-emerald-600" />
-              <span className="text-emerald-600 font-medium">+12%</span> vs last month
+              {/* <TrendingUp className="h-3 w-3 text-emerald-600" /> */}
+              {/* <span className="text-emerald-600 font-medium">+12%</span> vs last month */}
             </div>
           </div>
         </div>
@@ -210,8 +217,8 @@ export default function ServicesPage() {
             </div>
             <p className="text-xl font-bold text-gray-900">₹{analytics.Earning}</p>
             <div className="flex items-center gap-1 text-xs text-gray-500">
-              <TrendingUp className="h-3 w-3 text-emerald-600" />
-              <span className="text-emerald-600 font-medium">+8%</span> vs last month
+              {/* <TrendingUp className="h-3 w-3 text-emerald-600" />
+              <span className="text-emerald-600 font-medium">+8%</span> vs last month */}
             </div>
           </div>
         </div>
@@ -253,13 +260,11 @@ export default function ServicesPage() {
         editRoute={(slug) => `/services/edit/${slug}`}
         viewRoute={(slug) => `/services/${slug}`}
         deleteEndpoint={(slug) => `/service/V1/delete-service-by-slug/${slug}`}
-        // Fixed: async + return Promise<void>
         onDelete={async (slug: string) => {
           setDeleteSlug(slug);
           setDeleteDialog(true);
         }}
         statusToggleEndpoint={(slug) => `/service/V1/update-status/${slug}`}
-        // Fixed: async + return Promise<void>
         onStatusToggle={async (slug: string) => {
           setSelectedSlug(slug);
           setOpenDialog(true);
@@ -273,6 +278,8 @@ export default function ServicesPage() {
         setSearchQuery={setSearchQuery}
         statusField="status"
         showStatusToggle={true}
+        filterType={filterType}
+        setFilterType={setFilterType}
       />
 
       {/* Modals */}
@@ -299,6 +306,32 @@ export default function ServicesPage() {
         onConfirm={() => handleDeleteService(deleteSlug!)}
         confirmText="Delete"
       />
+
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative">
+            <Image
+              src={previewImage}
+              alt="Preview"
+              width={800}
+              height={600}
+              className="rounded shadow-lg object-contain max-h-[90vh] max-w-[90vw]"
+            />
+            <button
+              className="absolute top-2 right-2 text-white bg-red-600 bg-opacity-50 rounded-full p-1 hover:bg-opacity-75 "
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewImage(null);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </ContentLayout>
   );
 }

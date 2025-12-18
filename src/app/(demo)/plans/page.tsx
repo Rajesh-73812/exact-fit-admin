@@ -42,18 +42,20 @@ export default function PlanPage() {
 
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(10);
     const [total, setTotal] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
     const [openDialog, setOpenDialog] = useState(false);
     const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
     const [deleteDialog, setDeleteDialog] = useState(false);
     const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
+    const [filterType, setFilterType] = useState<'all' | 'residential' | 'commercial'>('all');
 
     const fetchPlans = async () => {
         setIsLoading(true);
         try {
             const { data } = await apiClient.get('/plan/V1/get-all-plan', {
-                params: { page, limit: 10, search: searchQuery || undefined },
+                params: { page, limit: limit, search: searchQuery || undefined, filter: filterType === "all" ? undefined : filterType },
             });
 
             const items = data.data || [];
@@ -92,7 +94,7 @@ export default function PlanPage() {
 
     useEffect(() => {
         fetchPlans();
-    }, [page, searchQuery]);
+    }, [page, limit, searchQuery, filterType]);
 
     const handleStatusToggle = async () => {
         if (!selectedSlug) return;
@@ -255,16 +257,17 @@ export default function PlanPage() {
                 }}
                 currentPage={page}
                 setCurrentPage={setPage}
-                itemsPerPage={10}
-                setItemsPerPage={() => { }}
+                itemsPerPage={limit}
+                setItemsPerPage={setLimit}
                 totalItems={total}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 statusField="is_active" 
                 showStatusToggle={true}
+                filterType={filterType}
+                setFilterType={setFilterType}
             />
 
-            {/* Status Toggle Modal */}
             <CustomModal
                 isOpen={openDialog}
                 onRequestClose={() => {

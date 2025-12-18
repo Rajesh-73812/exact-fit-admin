@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Image as ImageIcon, TrendingUp } from 'lucide-react';
+import { Bookmark, BookmarkMinus, Image as ImageIcon, TrendingUp } from 'lucide-react';
 import ListComponent from '@/components/ListComponent';
 import CustomModal from '@/components/CustomModal';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
@@ -30,7 +30,7 @@ export default function BannersListPage() {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState({
     total: 0,
     active: 0,
@@ -104,7 +104,7 @@ export default function BannersListPage() {
       key: 'image',
       header: 'Image',
       render: (b: Banner) => (
-        <div className="relative h-14 w-32 rounded-lg overflow-hidden bg-gray-100 border">
+        <div className="relative h-14 w-32 rounded-lg overflow-hidden bg-gray-100 border cursor-pointer" onClick={() => { setPreviewImage(b.image_url || null) }}>
           {b.image_url ? (
             <Image
               src={b.image_url}
@@ -153,51 +153,58 @@ export default function BannersListPage() {
 
   return (
     <ContentLayout title="Banners">
-      {/* Analytics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm text-gray-600">Total Banners</p>
-              <p className="text-3xl font-bold mt-1">{analytics.total}</p>
-            </div>
-            <div className="p-3 bg-violet-100 rounded-lg">
-              <ImageIcon className="h-7 w-7 text-violet-600" />
-            </div>
-          </div>
-        </div>
+      {/* summary cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+       {/* Total Banners */}
+       <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+         <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+         <div className="flex flex-col gap-1">
+           <div className="flex items-center gap-1">
+             <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+               <ImageIcon className="h-4 w-4 text-black" />
+             </div>
+             <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+               Total Banners
+             </h4>
+           </div>
+           <p className="text-xl font-bold text-gray-900">{analytics.total}</p>
+         </div>
+       </div>
 
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm text-gray-600">Active</p>
-              <p className="text-3xl font-bold text-emerald-600 mt-1">
-                {analytics.active}
-              </p>
-            </div>
-            <div className="p-3 bg-emerald-100 rounded-lg">
-              <TrendingUp className="h-7 w-7 text-emerald-600" />
-            </div>
-          </div>
-        </div>
+       {/* Active Banners */}
+       <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+         <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+         <div className="flex flex-col gap-1">
+           <div className="flex items-center gap-1">
+             <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+               <Bookmark className="h-4 w-4 text-black" />
+             </div>
+             <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+               Active
+             </h4>
+           </div>
+           <p className="text-xl font-bold text-gray-900">{analytics.active}</p>
+         </div>
+       </div>
 
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm text-gray-600">Inactive</p>
-              <p className="text-3xl font-bold text-red-600 mt-1">
-                {analytics.inactive}
-              </p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-lg">
-              <ImageIcon className="h-7 w-7 text-red-600" />
-            </div>
-          </div>
-        </div>
-      </div>
+       {/* Inactive Banners */}
+       <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+         <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+         <div className="flex flex-col gap-1">
+           <div className="flex items-center gap-1">
+             <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+               <BookmarkMinus className="h-4 w-4 text-black" />
+             </div>
+             <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+               Inactive
+             </h4>
+           </div>
+           <p className="text-xl font-bold text-gray-900">{analytics.inactive}</p>
+         </div>
+       </div>
+     </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border">
         <ListComponent
           title="Banner"
           data={banners}
@@ -225,7 +232,6 @@ export default function BannersListPage() {
           statusField="is_active"
           showStatusToggle={true}
         />
-      </div>
 
       {/* Confirm Status Toggle */}
       <CustomModal
@@ -253,6 +259,31 @@ export default function BannersListPage() {
         confirmText="Delete Permanently"
         cancelText="Cancel"
       />
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative">
+            <Image
+              src={previewImage}
+              alt="Preview"
+              width={800}
+              height={600}
+              className="rounded shadow-lg object-contain max-h-[90vh] max-w-[90vw]"
+            />
+            <button
+              className="absolute top-2 right-2 text-white bg-red-600 bg-opacity-50 rounded-full p-1 hover:bg-opacity-75 "
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewImage(null);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </ContentLayout>
   );
 }

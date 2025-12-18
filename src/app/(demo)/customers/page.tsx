@@ -160,46 +160,57 @@ export default function CustomersPage() {
   return (
     <ContentLayout title="Customers">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm text-gray-600">Total Customers</p>
-              <p className="text-3xl font-bold mt-1">{total}</p>
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        {/* Total Customers */}
+        <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <Users className="h-4 w-4 text-black" />
+              </div>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+                Total Customers
+              </h4>
             </div>
-            <div className="p-3 bg-teal-100 rounded-lg">
-              <Users className="h-7 w-7 text-teal-600" />
-            </div>
+            <p className="text-xl font-bold text-gray-900">{total}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm text-gray-600">Active</p>
-              <p className="text-3xl font-bold text-emerald-600 mt-1">{activeCount}</p>
+        {/* Active Customers */}
+        <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <UserCheck className="h-4 w-4 text-black" />
+              </div>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+                Active
+              </h4>
             </div>
-            <div className="p-3 bg-emerald-100 rounded-lg">
-              <UserCheck className="h-7 w-7 text-emerald-600" />
-            </div>
+            <p className="text-xl font-bold text-gray-900">{activeCount}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm text-gray-600">Inactive</p>
-              <p className="text-3xl font-bold text-red-600 mt-1">{inactiveCount}</p>
+        {/* Inactive Customers */}
+        <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <UserX className="h-4 w-4 text-black" />
+              </div>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+                Inactive
+              </h4>
             </div>
-            <div className="p-3 bg-red-100 rounded-lg">
-              <UserX className="h-7 w-7 text-red-600" />
-            </div>
+            <p className="text-xl font-bold text-gray-900">{inactiveCount}</p>
           </div>
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
         <ListComponent
           title="Customer"
           data={customers}
@@ -223,7 +234,6 @@ export default function CustomersPage() {
             setStatusModal(true);
           }}
         />
-      </div>
 
       {/* Status Toggle Confirmation Modal */}
       <CustomModal

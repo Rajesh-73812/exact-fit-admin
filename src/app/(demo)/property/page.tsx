@@ -36,9 +36,9 @@ export default function PropertyPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-
   const [openStatusModal, setOpenStatusModal] = useState(false);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
@@ -79,7 +79,7 @@ export default function PropertyPage() {
 
   useEffect(() => {
     fetchProperties();
-  }, [page, searchQuery]);
+  }, [page, limit, searchQuery]);
 
   // Toggle Status
   const handleStatusToggle = async () => {
@@ -130,12 +130,10 @@ export default function PropertyPage() {
       ),
     },
     {
-      key: 'category',
-      header: 'Category',
+      key: 'description',
+      header: 'Description',
       render: (item: Property) => (
-        <span className="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-          {item.category}
-        </span>
+        <p className='text-start'>{item.description}</p>
       ),
     },
     {
@@ -153,7 +151,7 @@ export default function PropertyPage() {
   return (
     <ContentLayout title="Properties">
       {/*/* Analytics Cards */
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Properties */}
         <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-4 border border-gray-200">
           <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
@@ -197,7 +195,7 @@ export default function PropertyPage() {
         </div>
 
         {/* Add Property Button Card */}
-        <div
+        {/* <div
           className="rounded-lg bg-gradient-to-r from-violet-600 to-indigo-600 shadow-lg p-4 text-white hover:shadow-xl transition cursor-pointer"
           onClick={() => router.push('/property/add')}
         >
@@ -208,7 +206,7 @@ export default function PropertyPage() {
               <p className="text-sm opacity-90">Click to create</p>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       }
@@ -220,24 +218,20 @@ export default function PropertyPage() {
         addRoute="/property/add"
         editRoute={(slug) => `/property/edit/${slug}`}
         viewRoute={(slug) => `/properties/${slug}`}
-
         deleteEndpoint={(slug) => `/property/V1/delete-property/${slug}`}
         statusToggleEndpoint={(slug) => `/property/V1/update-property/${slug}`}
-
         onStatusToggle={async(slug: string) => {
           setSelectedSlug(slug);
           setOpenStatusModal(true);
         }}
-
         onDelete={async(slug: string) => {
           setSelectedSlug(slug);
           setOpenDeleteModal(true);
         }}
-
         currentPage={page}
         setCurrentPage={setPage}
-        itemsPerPage={10}
-        setItemsPerPage={() => {}}
+        itemsPerPage={limit}
+        setItemsPerPage={setLimit}
         totalItems={total}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}

@@ -140,7 +140,7 @@ export function getMenuList(pathname: string): Group[] {
       ]
     },
     {
-      groupLabel: "Notifications",
+      groupLabel: "Support",
       menus: [
 
         {
@@ -150,7 +150,7 @@ export function getMenuList(pathname: string): Group[] {
         },
         {
           href: "/contactus",
-          label: "ContactUs",
+          label: "Contact Us",
           icon: Contact
         },
         {

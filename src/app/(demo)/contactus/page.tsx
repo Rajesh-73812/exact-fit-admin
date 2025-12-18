@@ -4,14 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Mail } from 'lucide-react';
-
 import ListComponent from '@/components/ListComponent';
 import CustomModal from '@/components/CustomModal';
 import apiClient from '@/lib/apiClient';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
-
-// Icons (you can swap these with your svg assets)
 import ContactIcon from '../../opengraph-image.png';
+import { format } from 'date-fns';
 
 interface Contact {
   id: string;
@@ -38,21 +36,19 @@ export default function ContactPage() {
     totalContacts: 0,
     recentContacts: 0,
   });
-
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchContacts = async () => {
     setIsLoading(true);
     try {
-      // Adjust endpoint if your backend uses a different path
       const { data } = await apiClient.get('/contactus/V1/get-all', {
-        params: { page, limit: 10, search: searchQuery || undefined },
+        params: { page, limit: limit, search: searchQuery || undefined },
       });
 
       const items = data.data || [];
@@ -69,8 +65,6 @@ export default function ContactPage() {
       }));
 
       setContacts(transformed);
-
-      // Prefer pagination.totalItems when present
       const totalItems = data.pagination?.totalItems ?? transformed.length;
       setTotal(totalItems);
 
@@ -91,8 +85,7 @@ export default function ContactPage() {
 
   useEffect(() => {
     fetchContacts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, searchQuery]);
+  }, [page, limit, searchQuery]);
 
   const handleDeleteContact = async () => {
     if (!deleteId) return;
@@ -100,7 +93,6 @@ export default function ContactPage() {
     try {
       setIsLoading(true);
       await apiClient.delete(`/contact-us/V1/delete-contact/${deleteId}`);
-      // refresh list
       await fetchContacts();
     } catch (err: any) {
       console.error('Delete failed:', err);
@@ -144,7 +136,7 @@ export default function ContactPage() {
       header: 'Submitted At',
       render: (item: Contact) => (
         <span className="text-sm">
-          {new Date(item.createdAt).toLocaleString('en-IN')}
+          {format(new Date(item.createdAt), 'dd MMM yyyy')}
         </span>
       ),
     },

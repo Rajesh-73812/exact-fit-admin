@@ -67,14 +67,12 @@ const getRowId = (item: any): string => {
   return '';
 };
 
-interface ListComponentProps {
+interface ListComponentProps<T extends string = string > {
   title: string;
   data: any[];
   columns: Column[];
   isLoading: boolean;
   addRoute?: string;
-
-  /** (slug or id) → URL string */
   editRoute: (id: string) => string;
   viewRoute?: (id: string) => string;
   deleteEndpoint: (id: string) => string;
@@ -84,7 +82,6 @@ interface ListComponentProps {
   approvalToggleEndpoint?: (id: string) => string;
   onApprovalToggle?: (id: string, status: string) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
-
   currentPage: number;
   setCurrentPage: (page: number) => void;
   itemsPerPage: number;
@@ -97,12 +94,15 @@ interface ListComponentProps {
   showStatusToggle?: boolean;
   showApprovalToggle?: boolean;
   customToggleConfig?: CustomToggleConfig;
+  filterType?: T;
+  setFilterType?: (value: T) => void;
+  
 }
 
 /* --------------------------------------------------------------
    ListComponent
    -------------------------------------------------------------- */
-export default function ListComponent({
+export default function ListComponent<T extends string = string>({
   title,
   data,
   columns,
@@ -128,7 +128,9 @@ export default function ListComponent({
   showStatusToggle = true,
   showApprovalToggle = false,
   customToggleConfig,
-}: ListComponentProps) {
+  filterType,
+  setFilterType
+}: ListComponentProps<T>) {
   const router = useRouter();
   const pathName = usePathname();
 
@@ -173,7 +175,7 @@ export default function ListComponent({
 
   /* ---------- Delete ---------- */
   const handleDelete = async (id: string) => {
-  
+
     try {
       setDeletingId(id);
       if (onDelete) {
@@ -265,27 +267,62 @@ export default function ListComponent({
         {/* ----- Header (search + add) ----- */}
         {addRoute && (
           <div className="flex justify-between items-center gap-3 mb-4 mt-4">
-            <div className="relative w-60">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder={`Search ${title.toLowerCase()}...`}
-                value={debouncedSearchQuery}
-                onChange={(e) => setDebouncedSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full rounded-md border border-input bg-background text-foreground placeholder-muted-foreground focus:ring-primary focus:border-primary"
-              />
+            <div className="flex items-center gap-4 flex-1">
+              {/* Search Input */}
+              <div className="relative w-60">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={`Search ${title.toLowerCase()}...`}
+                  value={debouncedSearchQuery}
+                  onChange={(e) => setDebouncedSearchQuery(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full rounded-md border border-input bg-background text-foreground placeholder-muted-foreground focus:ring-primary focus:border-primary"
+                />
+              </div>
+
+              {/* FILTER: Show ONLY when title is "Service" */}
+              {title === 'Service' && (
+                <Select
+                  value={filterType ?? 'all'}
+                  onValueChange={(value) => setFilterType?.(value as T)}
+                >
+                  <SelectTrigger className="w-56">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Services</SelectItem>
+                    <SelectItem value="subscription">Subscription Only</SelectItem>
+                    <SelectItem value="enquiry">Enquiry Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+
+              {title === 'Plan' && (
+                <Select
+                  value={filterType ?? 'all'}
+                  onValueChange={(value) => setFilterType?.(value as T)}
+                >
+                  <SelectTrigger className="w-56">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Plans</SelectItem>
+                    <SelectItem value="residential">Residential</SelectItem>
+                    <SelectItem value="commercial">Commercial</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
-            {
-              addRoute && !isCustomers && (
-                <Button
-              onClick={() => router.push(addRoute)}
-              className="flex items-center bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add {title}
-            </Button>
-              )
-            }
+            {/* Add Button */}
+            {addRoute && !isCustomers && (
+              <Button
+                onClick={() => router.push(addRoute)}
+                className="flex items-center bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add {title}
+              </Button>
+            )}
           </div>
         )}
 
@@ -365,13 +402,13 @@ export default function ListComponent({
                 </TableRow>
               ) : (
                 data.map((item, idx) => {
-                  const rowId = getRowId(item);               // <-- dynamic id/slug
+                  const rowId = getRowId(item);
                   const isDeleting = deletingId === rowId;
                   const isDownloading = downloadingId === rowId;
 
                   return (
                     <TableRow
-                      key={rowId}                               // <-- React key
+                      key={rowId}
                       className="hover:bg-muted/20 dark:hover:bg-muted/50 transition-all"
                     >
                       <TableCell className="text-foreground">{startIndex + idx}</TableCell>
@@ -436,8 +473,8 @@ export default function ListComponent({
                             ) : (
                               <span
                                 className={`inline-flex items-center rounded-full text-xs font-medium px-3 py-1 ${item[approvalField] === 'approved'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-red-100 text-red-800'
+                                  ? 'bg-green-100 text-green-800'
+                                  : 'bg-red-100 text-red-800'
                                   }`}
                               >
                                 {item[approvalField] === 'approved'
@@ -454,7 +491,7 @@ export default function ListComponent({
                           {/* View */}
                           {title !== 'Transaction' &&
                             title !== 'Notifications' &&
-                            viewRoute && !isPlanPage && !isNotifications &&(
+                            viewRoute && !isPlanPage && !isNotifications && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -512,7 +549,7 @@ export default function ListComponent({
                               </Tooltip>
                             )
                           ) : (
-                            title !== 'Transaction' && !isContactUsPage && !isTickets && 
+                            title !== 'Transaction' && !isContactUsPage && !isTickets &&
                             onDelete && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -533,7 +570,7 @@ export default function ListComponent({
 
                           {/* Download (Transaction) */}
 
-                          {title === 'Transaction' &&  'Sent Notifications' && (
+                          {title === 'Transaction' && 'Sent Notifications' && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
@@ -567,7 +604,7 @@ export default function ListComponent({
                 Showing {startIndex} to {endIndex} of {totalItems} {title.toLowerCase()}
               </span>
 
-              <Select value={itemsPerPage.toString()} onValueChange={(v)=>handleItemsPerPageChange(v)}>
+              <Select value={itemsPerPage.toString()} onValueChange={(v) => handleItemsPerPageChange(v)}>
                 <SelectTrigger className="w-20 bg-background text-foreground border-input focus:ring-primary">
                   <SelectValue />
                 </SelectTrigger>
