@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { TrendingUp, IndianRupee, Package, Image as ImageIcon, Plus } from 'lucide-react';
+import { TrendingUp, IndianRupee, Package, Image as ImageIcon, Plus, Bookmark, BookmarkMinus } from 'lucide-react';
 import ListComponent from '@/components/ListComponent';
 import CustomModal from '@/components/CustomModal';
 import apiClient from '@/lib/apiClient';
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 
 interface SubService {
   id: string;
+  Service: string;
   title: string;
   sub_service_slug: string;
   description: string;
@@ -45,6 +46,7 @@ export default function SubServicesPage() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<SubServiceAnalytics>({
     totalSubcategories: 0,
     activeSubcategories: 0,
@@ -53,7 +55,6 @@ export default function SubServicesPage() {
     totalEarnings: 0,
   });
 
-  /* -------------------------------------------------- FETCH -------------------------------------------------- */
   useEffect(() => {
     fetchSubServices();
   }, [page, itemsPerPage, searchQuery]);
@@ -67,7 +68,8 @@ export default function SubServicesPage() {
 
       const items = data.data || [];
       const transformed: SubService[] = items.map((s: any) => ({
-        id: s.id || s.sub_service_slug, // fallback to slug if no id
+        id: s.id || s.sub_service_slug,
+        Service: s.service ? s.service.title : 'No Service',
         title: s.title,
         sub_service_slug: s.sub_service_slug,
         description: s.description || '—',
@@ -79,7 +81,7 @@ export default function SubServicesPage() {
         discount: s.discount ?? 0,
         price: s.price ?? 0,
       }));
-
+      console.log(transformed, "ttttttttttt")
       setSubservices(transformed);
       setTotal(data.pagination?.total || 0);
       setAnalytics((prev) => ({
@@ -95,7 +97,6 @@ export default function SubServicesPage() {
     }
   };
 
-  /* -------------------------------------------------- TOGGLE STATUS -------------------------------------------------- */
   const handleStatusToggle = async () => {
     if (!selectedSlug) return;
     try {
@@ -112,32 +113,30 @@ export default function SubServicesPage() {
   };
 
   const handleDeleteSubService = async () => {
-  if (!deleteSlug) return;
+    if (!deleteSlug) return;
 
-  try {
-    setIsLoading(true);
-    await apiClient.delete(`/sub-service/V1/delete-sub-service-by-slug/${deleteSlug}`);
-    
-    await fetchSubServices(); // refresh list
-  } catch (err: any) {
-    console.error('Failed to delete sub-service:', err);
-    // FIXED: was "al" → now "alert"
-    alert(err?.response?.data?.message || 'Failed to delete sub-service');
-  } finally {
-    setIsLoading(false);
-    setDeleteDialog(false);   // ← this closes the modal
-    setDeleteSlug(null);
-  }
-};
+    try {
+      setIsLoading(true);
+      await apiClient.delete(`/sub-service/V1/delete-sub-service-by-slug/${deleteSlug}`);
 
-  /* -------------------------------------------------- COLUMNS -------------------------------------------------- */
+      await fetchSubServices();
+    } catch (err: any) {
+      console.error('Failed to delete sub-service:', err);
+      alert(err?.response?.data?.message || 'Failed to delete sub-service');
+    } finally {
+      setIsLoading(false);
+      setDeleteDialog(false);
+      setDeleteSlug(null);
+    }
+  };
+
   const columns = [
     {
       key: 'image',
       header: 'Image',
       render: (item: SubService) =>
         item.image_url ? (
-          <div className="relative h-10 w-10 rounded-md overflow-hidden">
+          <div className="relative h-10 w-10 rounded-md overflow-hidden cursor-pointer" onClick={() => { setPreviewImage(item.image_url || null) }}>
             <Image src={item.image_url} alt={item.title} fill className="object-cover" />
           </div>
         ) : (
@@ -145,6 +144,13 @@ export default function SubServicesPage() {
             <ImageIcon className="h-5 w-5 text-gray-400" />
           </div>
         ),
+    },
+    {
+      key: 'service',
+      header: 'Service',
+      render: (item: SubService) => (
+        <p className="text-sm text-gray-600 truncate max-w-xs">{item.Service}</p>
+      ),
     },
     {
       key: 'title',
@@ -170,125 +176,129 @@ export default function SubServicesPage() {
       header: 'Position',
       render: (item: SubService) => <span className="text-center font-medium">{item.position}</span>,
     },
-    {
-      key: 'status',
-      header: 'Status',
-      render: (item: SubService) => (
-        <span
-          className={`px-3 py-1 text-xs font-medium rounded-full ${item.status === 'active'
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'
-            }`}
-        >
-          {item.status}
-        </span>
-      ),
-    },
-    {
-      key: 'createdAt',
-      header: 'Created',
-      render: (item: SubService) => new Date(item.createdAt).toLocaleDateString(),
-    },
+    // {
+    //   key: 'status',
+    //   header: 'Status',
+    //   render: (item: SubService) => (
+    //     <span
+    //       className={`px-3 py-1 text-xs font-medium rounded-full ${item.status === 'active'
+    //         ? 'bg-green-100 text-green-800'
+    //         : 'bg-red-100 text-red-800'
+    //         }`}
+    //     >
+    //       {item.status}
+    //     </span>
+    //   ),
+    // },
+    // {
+    //   key: 'createdAt',
+    //   header: 'Created',
+    //   render: (item: SubService) => new Date(item.createdAt).toLocaleDateString(),
+    // },
   ];
 
-  /* -------------------------------------------------- RENDER -------------------------------------------------- */
   return (
     <ContentLayout title="Sub Services">
       {/* Top Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Sub Services */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Sub Services</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {analytics.totalSubcategories}
-              </p>
+        <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <BookmarkMinus className="h-4 w-4 text-black" />
+              </div>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+                Total Sub Services
+              </h4>
             </div>
-            <div className="p-3 bg-violet-100 rounded-lg">
-              <Package className="h-6 w-6 text-violet-600" />
-            </div>
-          </div>
-          <div className="flex items-center mt-3 text-sm text-green-600">
-            <TrendingUp className="h-4 w-4 mr-1" />
-            <span>+10% from last month</span>
+            <p className="text-xl font-bold text-gray-900">
+              {analytics.totalSubcategories}
+            </p>
           </div>
         </div>
 
         {/* Total Earnings */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Earnings</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">₹{analytics.totalEarnings}</p>
+        <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <IndianRupee className="h-4 w-4 text-black" />
+              </div>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+                Total Earnings
+              </h4>
             </div>
-            <div className="p-3 bg-emerald-100 rounded-lg">
-              <IndianRupee className="h-6 w-6 text-emerald-600" />
-            </div>
-          </div>
-          <div className="flex items-center mt-3 text-sm text-green-600">
-            <TrendingUp className="h-4 w-4 mr-1" />
-            <span>+15% from last month</span>
+            <p className="text-xl font-bold text-gray-900">₹{analytics.totalEarnings}</p>
           </div>
         </div>
 
         {/* Status Breakdown */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Status Breakdown</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {analytics.totalSubcategories}
-              </p>
+        <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1">
+              <div className="rounded bg-[#E31E24] bg-opacity-10 p-1.5 flex items-center justify-center">
+                <BookmarkMinus className="h-4 w-4 text-black" />
+              </div>
+              <h4 className="text-xs font-semibold text-[#E31E24] uppercase">
+                Sub Services Status
+              </h4>
             </div>
-            <div className="p-3 bg-indigo-100 rounded-lg">
-              <Package className="h-6 w-6 text-indigo-600" />
-            </div>
-          </div>
-          <div className="flex justify-between mt-3 text-sm">
-            <div className="flex items-center">
-              <span className="h-2 w-2 rounded-full bg-green-500 mr-1"></span>
-              <span className="font-medium text-green-600">{analytics.activeSubcategories} Active</span>
-            </div>
-            <div className="flex items-center">
-              <span className="h-2 w-2 rounded-full bg-red-500 mr-1"></span>
-              <span className="font-medium text-red-600">{analytics.inactiveSubcategories} Inactive</span>
+            <p className="text-xl font-bold text-gray-900">
+              {analytics.totalSubcategories}
+            </p>
+            <div className="flex justify-between text-xs text-gray-600">
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                Active:{' '}
+                <span className="font-semibold text-green-600">
+                  {analytics.activeSubcategories}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full bg-red-500" />
+                Inactive:{' '}
+                <span className="font-semibold text-red-600">
+                  {analytics.inactiveSubcategories}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* List Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <ListComponent
-          title="Sub Service"
-          data={subservices}
-          columns={columns}
-          isLoading={isLoading}
-          addRoute="/subservices/add"
-          editRoute={(slug) => `/subservices/edit/${slug}`}
-          viewRoute={(slug) => `/subservices/${slug}`}
-          deleteEndpoint={(slug) => `/sub-service/V1/delete-sub-service-by-slug/${slug}`}
-          onDelete={async (slug) => {
-            setDeleteSlug(slug);
-            setDeleteDialog(true);
-          }}
-          statusToggleEndpoint={(slug) => `/sub-service/V1/update-sub-service-status/${slug}`}
-          onStatusToggle={async (slug: string) => {
-            setSelectedSlug(slug);
-            setOpenDialog(true);
-          }}
-          currentPage={page}
-          setCurrentPage={setPage}
-          itemsPerPage={itemsPerPage}
-          setItemsPerPage={setItemsPerPage}
-          totalItems={total}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          statusField="status"
-          showStatusToggle={true}
-        />
-      </div>
+      <ListComponent
+        title="Sub Service"
+        data={subservices}
+        columns={columns}
+        isLoading={isLoading}
+        addRoute="/subservices/add"
+        editRoute={(slug) => `/subservices/edit/${slug}`}
+        viewRoute={(slug) => `/subservices/${slug}`}
+        deleteEndpoint={(slug) => `/sub-service/V1/delete-sub-service-by-slug/${slug}`}
+        onDelete={async (slug) => {
+          setDeleteSlug(slug);
+          setDeleteDialog(true);
+        }}
+        statusToggleEndpoint={(slug) => `/sub-service/V1/update-sub-service-status/${slug}`}
+        onStatusToggle={async (slug: string) => {
+          setSelectedSlug(slug);
+          setOpenDialog(true);
+        }}
+        currentPage={page}
+        setCurrentPage={setPage}
+        itemsPerPage={itemsPerPage}
+        setItemsPerPage={setItemsPerPage}
+        totalItems={total}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        statusField="status"
+        showStatusToggle={true}
+      />
 
       {/* Status Toggle Modal */}
       <CustomModal
@@ -315,6 +325,32 @@ export default function SubServicesPage() {
         onConfirm={handleDeleteSubService}
         confirmText="Delete"
       />
+
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative">
+            <Image
+              src={previewImage}
+              alt="Preview"
+              width={800}
+              height={600}
+              className="rounded shadow-lg object-contain max-h-[90vh] max-w-[90vw]"
+            />
+            <button
+              className="absolute top-2 right-2 text-white bg-red-600 bg-opacity-50 rounded-full p-1 hover:bg-opacity-75 "
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewImage(null);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </ContentLayout>
   );
 }

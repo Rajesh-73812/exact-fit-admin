@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { FileText } from 'lucide-react';
+import { FileText, ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import ListComponent from '@/components/ListComponent';
 import apiClient from '@/lib/apiClient';
@@ -43,12 +43,13 @@ export default function TicketPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fetchTickets = async () => {
     setIsLoading(true);
     try {
@@ -57,12 +58,10 @@ export default function TicketPage() {
       });
 
       const items = data.data || [];
-      // normalize image_url to array and thumbnail
       const transformed: Ticket[] = items.map((t: any) => {
         let imgs: string[] = [];
         if (Array.isArray(t.image_url)) imgs = t.image_url;
         else if (typeof t.image_url === 'string' && t.image_url) imgs = [t.image_url];
-        // else leave as empty
 
         return {
           id: t.id,
@@ -80,10 +79,8 @@ export default function TicketPage() {
 
       setTickets(transformed);
 
-      // pagination total — prefer backend pagination if present
       const totalCount = data.pagination?.totalCount ?? transformed.length;
       setTotal(totalCount);
-
       const pending = transformed.filter(x => x.status === 'pending').length;
       const completed = transformed.filter(x => x.status === 'completed').length;
       const withAttachments = transformed.filter(x => x.thumbnail).length;
@@ -103,8 +100,7 @@ export default function TicketPage() {
 
   useEffect(() => {
     fetchTickets();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, itemsPerPage, searchQuery]);
+  }, [page, limit, itemsPerPage, searchQuery]);
 
   const handleDeleteTicket = async () => {
     if (!deleteId) return;
@@ -155,12 +151,30 @@ export default function TicketPage() {
       render: (item: Ticket) => (
         <div className="flex items-center gap-2">
           {item.thumbnail ? (
-            <div className="w-12 h-8 relative rounded overflow-hidden bg-gray-100 border">
-              <Image src={item.thumbnail!} alt="attachment" fill className="object-cover" unoptimized />
+            <div
+              className="w-12 h-8 relative rounded overflow-hidden bg-gray-100 border"
+              onClick={() => { setPreviewImage(item.image_url?.[0] || null); }}
+            >
+              <Image
+                src={item.thumbnail}
+                alt="attachment"
+                fill
+                className="object-cover cursor-pointer"
+                unoptimized
+              />
             </div>
           ) : (
-            <div className="w-12 h-8 flex items-center justify-center text-xs text-gray-500 bg-gray-50 border rounded">—</div>
+            <div
+              className="w-12 h-8 flex items-center justify-center text-xs text-gray-500 bg-gray-50 border rounded "
+              onClick={() => { setPreviewImage(null); }}
+            >
+              {/* <img src="/path/to/fallback-image.jpg" alt="fallback" className="object-cover" />  */}
+              <div className="h-10 w-10 rounded-md bg-gray-100 flex items-center justify-center">
+                <ImageIcon className="h-5 w-5 text-gray-400" />
+              </div>
+            </div>
           )}
+
           <span className="text-sm">{Array.isArray(item.image_url) ? item.image_url.length : 0}</span>
         </div>
       ),
@@ -168,7 +182,7 @@ export default function TicketPage() {
     {
       key: 'createdAt',
       header: 'Submitted At',
-      render: (item: Ticket) => <span className="text-sm">{format(new Date(item.createdAt), 'dd MMM yyyy, hh:mm a')}</span>,
+      render: (item: Ticket) => <span className="text-sm">{format(new Date(item.createdAt), 'dd MMM yyyy')}</span>,
     },
   ];
 
@@ -263,7 +277,33 @@ export default function TicketPage() {
         setSearchQuery={setSearchQuery}
         statusField="status"
         showStatusToggle={false}
+        
       />
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative">
+            <Image
+              src={previewImage}
+              alt="Preview"
+              width={800}
+              height={600}
+              className="rounded shadow-lg object-contain max-h-[90vh] max-w-[90vw]"
+            />
+            <button
+              className="absolute top-2 right-2 text-white bg-red-600 bg-opacity-50 rounded-full p-1 hover:bg-opacity-75 "
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewImage(null);
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </ContentLayout>
   );
 }

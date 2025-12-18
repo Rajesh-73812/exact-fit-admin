@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Image as ImageIcon } from 'lucide-react';
-
 import apiClient from '@/lib/apiClient';
 import ListComponent from '@/components/ListComponent';
 import CustomModal from '@/components/CustomModal';
@@ -18,8 +17,6 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import Link from 'next/link';
-// import Loader from '@/components/demo/utils/Loader';
-// import { useNotification } from '@/components/ui/NotificationContext';
 
 interface User {
   id: string;
@@ -40,8 +37,6 @@ interface Column {
 
 const AdminsListPage: React.FC = () => {
   const router = useRouter();
-  // const { addNotification } = useNotification();
-
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -49,8 +44,6 @@ const AdminsListPage: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-
-  // status / delete modals
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -67,6 +60,8 @@ const AdminsListPage: React.FC = () => {
           ...(searchTerm.trim() && { search: searchTerm.trim() }),
         },
       });
+
+      console.log(response,"kkkkkkkkkkkkkkkkkkkkkkk");
 
       // Expected backend result from getAllAdmin:
       // {
@@ -144,10 +139,10 @@ const AdminsListPage: React.FC = () => {
     if (!id) return;
     setIsLoading(true);
     try {
-      await apiClient.patch(`/auth/V1/update-status/${id}`, null, {
+      const res = await apiClient.patch(`/auth/V1/change-status/${id}`, null, {
         withCredentials: true,
       });
-
+      console.log(res,"ooooooooooooo")
       await fetchUsers();
 
       // addNotification({

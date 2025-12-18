@@ -102,7 +102,7 @@ const AdminForm: React.FC<{ id?: string; readOnly?: boolean }> = ({ id, readOnly
   }, [id]);
 
   const handleCancel = () => {
-    router.push('/admin/list');
+    router.push('/admin');
   };
 
   const validateForm = () => {
