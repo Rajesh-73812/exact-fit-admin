@@ -1,79 +1,150 @@
-"use client";
+// app/bookings/subscriptions/view/[id]/page.tsx
+'use client';
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Calendar, User, CheckCircle2, XCircle } from "lucide-react";
+import apiClient from "@/lib/apiClient";
+import Loader from "@/components/utils/Loader";
+
+interface ScheduledVisit {
+  scheduled_date: string;
+  status: string;
+  visit_number: number;
+  technician_assigned: boolean;
+}
+
+interface ServiceVisit {
+  service_name: string;
+  scheduled_visits: ScheduledVisit[];
+}
+
+interface SubscriptionDetail {
+  id: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  price_total: number;
+  payment_option: string;
+  payment_status: string;
+  subscriptionType: string;
+  subscriptionPlanName: string | null;
+  visits: ServiceVisit[];
+}
 
 export default function ViewSubscriptionPage() {
   const { id } = useParams();
+  const [subscription, setSubscription] = useState<SubscriptionDetail | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // This should eventually come from backend or localStorage
-  const data = [
-    {
-      service: "Air Conditioning",
-      scheduleDates: ["25-10-2025", "25-02-2026", "25-06-2026"],
-      status: [true, false, true],
-      technician: "James Carter",
-    },
-    {
-      service: "Plumbing",
-      scheduleDates: ["01-11-2025", "01-03-2026", "01-07-2026"],
-      status: [false, false, false],
-      technician: "Emily Davis",
-    },
-    {
-      service: "Electrical Services",
-      scheduleDates: ["08-11-2025", "08-03-2026", "08-07-2026"],
-      status: [false, true, false],
-      technician: "",
-    },
-  ];
+  useEffect(() => {
+    const fetchSubscription = async () => {
+      try {
+        setLoading(true);
+        const response = await apiClient.get(`/booking/V1/get-subscription-booking-by-id/${id}`);
+        setSubscription(response.data.data);
+      } catch (err) {
+        console.error("Failed to load subscription:", err);
+        alert("Failed to load subscription details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchSubscription();
+  }, [id]);
+
+  if (loading) return <Loader />;
+
+  if (!subscription) return <p className="text-center py-10">Subscription not found</p>;
 
   return (
-    <ContentLayout title={`View Subscription #${id}`}>
-      {data.map((serviceBlock, idx) => (
-        <Card key={idx} className="mb-6 shadow-md border">
+    <ContentLayout title={`Subscription #${subscription.id}`}>
+      {/* Header Info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-lg text-red-600">
-              {serviceBlock.service}
+            <CardTitle className="text-lg">Plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-semibold">
+              {subscription.subscriptionType === "plan"
+                ? subscription.subscriptionPlanName || "Unnamed Plan"
+                : "Custom Subscription"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Duration</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              {subscription.start_date} → {subscription.end_date}
+            </p>
+            <p className="text-sm text-gray-600 mt-1 capitalize">{subscription.payment_option}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Payment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold">AED {subscription.price_total}</p>
+            <Badge variant={subscription.payment_status === "paid" ? "default" : "outline"} className="mt-2">
+              {subscription.payment_status.toUpperCase()}
+            </Badge>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Services & Visits Table */}
+      {subscription.visits.map((serviceBlock, idx) => (
+        <Card key={idx} className="mb-8 shadow-lg border">
+          <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+            <CardTitle className="text-xl text-indigo-800 flex items-center gap-3">
+              {serviceBlock.service_name}
+              <Badge variant="secondary">
+                {serviceBlock.scheduled_visits.length} visit{serviceBlock.scheduled_visits.length > 1 ? "s" : ""}
+              </Badge>
             </CardTitle>
           </CardHeader>
 
-          <CardContent>
-            <table className="w-full border-t">
-              <thead>
-                <tr className="text-left text-red-600 text-sm border-b">
-                  <th className="py-2">Service Name</th>
-                  <th className="py-2">Schedule Date</th>
-                  <th className="py-2 text-center">Status</th>
-                  <th className="py-2">Technician</th>
+          <CardContent className="p-0">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Visit #</th>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Scheduled Date</th>
+                  <th className="text-center py-4 px-6 font-medium text-gray-700">Status</th>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Technician</th>
                 </tr>
               </thead>
-
               <tbody>
-                {serviceBlock.scheduleDates.map((date, i) => (
-                  <tr key={i} className="border-b">
-                    {/* Service Name */}
-                    <td className="py-2 text-sm">{serviceBlock.service}</td>
-
-                    {/* Schedule Date */}
-                    <td className="py-2 text-sm">{date}</td>
-
-                    {/* Status ✓ / ✕ */}
-                    <td className="py-2 text-center text-xl">
-                      {serviceBlock.status[i] ? (
-                        <span className="text-green-600">✓</span>
+                {serviceBlock.scheduled_visits.map((visit, i) => (
+                  <tr key={i} className="border-b hover:bg-gray-50 transition">
+                    <td className="py-4 px-6">Visit {visit.visit_number}</td>
+                    <td className="py-4 px-6 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-gray-500" />
+                      {visit.scheduled_date}
+                    </td>
+                    <td className="py-4 px-6 text-center">
+                      {visit.status === "completed" || visit.status === "done" ? (
+                        <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto" />
                       ) : (
-                        <span className="text-red-500">✕</span>
+                        <XCircle className="w-6 h-6 text-red-500 mx-auto" />
                       )}
                     </td>
-
-                    {/* Technician */}
-                    <td className="py-2 text-sm">
-                      {serviceBlock.technician ? (
-                        <Badge className="bg-green-100 text-green-700">
-                          {serviceBlock.technician}
+                    <td className="py-4 px-6">
+                      {visit.technician_assigned ? (
+                        <Badge className="bg-green-100 text-green-800">
+                          Assigned
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="text-gray-500">
