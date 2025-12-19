@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import Loader from '@/components/utils/Loader';
 import apiClient from '@/lib/apiClient';
 import SafeHtml from '@/components/SafeHtml';
+import clsx from 'clsx';
 
 const generateSlug = (name: string, category: string): string => {
   const cleanName = name
@@ -41,6 +42,7 @@ interface Service {
 interface PlanService {
   service_id: string;
   visit_count: number;
+  title?: string;
 }
 
 interface PlanFormProps {
@@ -74,6 +76,7 @@ export default function PlanForm({ slug }: PlanFormProps) {
       try {
         const { data } = await apiClient.get('/service/V1/get-all-service?filter=subscription');
         setServices(data.data || []);
+        console.log(data,"dddddddddddddddddddata")
       } catch (err) {
         console.error('Failed to load services:', err);
       }
@@ -98,6 +101,7 @@ export default function PlanForm({ slug }: PlanFormProps) {
       try {
         const { data } = await apiClient.get(`/plan/V1/get-plan-by-slug/${currentSlug}`);
         const plan = data.data;
+        console.log(data,"slug dddddddddata")
 
         setFormData({
           name: plan.name || '',
@@ -112,10 +116,11 @@ export default function PlanForm({ slug }: PlanFormProps) {
         setDescription(plan.description || '');
 
         // Load plan services (from pivot table)
-        if (plan.planServices && plan.planServices.length > 0) {
-          const services = plan.planServices.map((ps: any) => ({
+        if (plan.planSubServices && plan.planSubServices.length > 0) {
+          const services = plan.planSubServices.map((ps: any) => ({
             service_id: ps.service_id,
             visit_count: ps.visit_count,
+            title: ps.service?.title || '',
           }));
           setSelectedServices(services);
         }
@@ -359,7 +364,7 @@ export default function PlanForm({ slug }: PlanFormProps) {
                     return (
                       <div key={item.service_id} className="flex items-center justify-between p-4 border rounded-lg bg-gray-50">
                         <div>
-                          <p className="font-semibold">{service?.title || 'Unknown'}</p>
+                          <p className="font-semibold">{item.title}</p>
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="flex flex-col gap-2">
