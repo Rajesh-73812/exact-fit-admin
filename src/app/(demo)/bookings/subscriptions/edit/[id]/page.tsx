@@ -1,231 +1,268 @@
-"use client";
+// app/bookings/subscriptions/edit/[id]/page.tsx
+'use client';
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { addMonths, addWeeks, format } from "date-fns";
-
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import {
-  Select,
-  SelectTrigger,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Calendar, CheckCircle2, XCircle, Clock } from "lucide-react";
+import apiClient from "@/lib/apiClient";
+import Loader from "@/components/utils/Loader";
 
-import { mockTechnicians } from "@/data/mockTechnicians";
+interface Technician {
+  id: string;
+  fullname: string | null;
+  service_type: string | null;
+}
 
-type Service = {
-  name: string;
-  role: string;
-  scheduleDates: string[];
-  status: boolean[];
-  technician?: string;
-};
+interface ScheduledVisit {
+  id: string;
+  subservice_id: string;
+  scheduled_date: string;
+  status: string;
+  visit_number: number;
+  technician_id: string | null;
+}
+
+interface ServiceVisit {
+  service_name?: string;
+  scheduled_visits: ScheduledVisit[];
+}
+
+interface SubscriptionDetail {
+  id: string;
+  visits: ServiceVisit[];
+}
 
 export default function EditSubscriptionPage() {
   const { id } = useParams();
-  const [services, setServices] = useState<Service[]>([]);
-  const [startDate] = useState(new Date());
+  const [subscription, setSubscription] = useState<SubscriptionDetail | null>(null);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
 
-  // ----------------------------------------------------------
-  // AUTO GENERATE DATES + STATUS
-  // ----------------------------------------------------------
+  // Pending changes per visit ID
+  const [pendingChanges, setPendingChanges] = useState<Record<string, {
+    technicianId?: string;
+    scheduledDate?: string;
+  }>>({});
+
   useEffect(() => {
-    const baseServices: Omit<Service, "scheduleDates" | "status">[] = [
-      { name: "Air Conditioning", role: "Air Conditioning" },
-      { name: "Plumbing", role: "Plumbing" },
-      { name: "Electrical Services", role: "Electrical Services" },
-      { name: "Appliance Services", role: "Appliance Services" },
-      { name: "Gardening Services", role: "Gardening Services" },
-    ];
+    const fetchData = async () => {
+      try {
+        setLoading(true);
 
-    const schedules = baseServices.map((service, idx) => {
-      const offset = addWeeks(startDate, idx);
+        const subRes = await apiClient.get(`/booking/V1/get-subscription-booking-by-id/${id}`);
+        setSubscription(subRes.data.data);
 
-      const dates = [
-        format(offset, "dd-MM-yyyy"),
-        format(addMonths(offset, 4), "dd-MM-yyyy"),
-        format(addMonths(offset, 8), "dd-MM-yyyy"),
-      ];
+        const techRes = await apiClient.get("/technicians/V1/get-all");
+        const techList = techRes.data?.data?.rows || [];
+        setTechnicians(techList);
+      } catch (err) {
+        console.error("Failed to load data:", err);
+        alert("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      return {
-        ...service,
-        scheduleDates: dates,
-        status: [false, false, false], // default not done
-      };
-    });
+    if (id) fetchData();
+  }, [id]);
 
-    setServices(schedules);
-  }, [startDate]);
+  const assignTechnician = async (visitId: string) => {
+    const changes = pendingChanges[visitId];
 
-  // ----------------------------------------------------------
-  // UPDATE HANDLERS
-  // ----------------------------------------------------------
-  const updateDate = (serviceIdx: number, dateIdx: number, newDate: string) => {
-    setServices((prev) =>
-      prev.map((s, i) =>
-        i === serviceIdx
-          ? {
-              ...s,
-              scheduleDates: s.scheduleDates.map((d, di) =>
-                di === dateIdx ? newDate : d
-              ),
-            }
-          : s
-      )
-    );
+    if (!changes?.technicianId) {
+      alert("Please select a technician first");
+      return;
+    }
+
+    try {
+      setSaving(visitId);
+
+      const payload: any = { technician_id: changes.technicianId };
+      if (changes.scheduledDate) payload.scheduled_date = changes.scheduledDate;
+
+      await apiClient.post(`/subscription/visit/${visitId}/assign`, payload);
+
+      // Update main subscription state
+      setSubscription(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          visits: prev.visits.map(sv => ({
+            ...sv,
+            scheduled_visits: sv.scheduled_visits.map(v =>
+              v.id === visitId
+                ? {
+                    ...v,
+                    technician_id: changes.technicianId,
+                    ...(changes.scheduledDate && { scheduled_date: changes.scheduledDate })
+                  }
+                : v
+            )
+          }))
+        };
+      });
+
+      // Clear only this visit's pending changes
+      setPendingChanges(prev => {
+        const newChanges = { ...prev };
+        delete newChanges[visitId];
+        return newChanges;
+      });
+
+      alert("Technician assigned successfully!");
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to assign technician");
+    } finally {
+      setSaving(null);
+    }
   };
 
-  const toggleStatus = (serviceIdx: number, dateIdx: number) => {
-    setServices((prev) =>
-      prev.map((s, i) =>
-        i === serviceIdx
-          ? {
-              ...s,
-              status: s.status.map((st, si) =>
-                si === dateIdx ? !st : st
-              ),
-            }
-          : s
-      )
-    );
+  const updatePendingTechnician = (visitId: string, technicianId: string) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [visitId]: {
+        ...prev[visitId],
+        technicianId
+      }
+    }));
   };
 
-  const handleSelectTech = (serviceIdx: number, tech: string) => {
-    setServices((prev) =>
-      prev.map((s, i) => (i === serviceIdx ? { ...s, technician: tech } : s))
-    );
+  const updatePendingDate = (visitId: string, date: string) => {
+    setPendingChanges(prev => ({
+      ...prev,
+      [visitId]: {
+        ...prev[visitId],
+        scheduledDate: date
+      }
+    }));
   };
 
-  const handleAssign = (serviceIdx: number, dateIdx: number) => {
-    const tech = services[serviceIdx].technician;
-    if (!tech) return alert("Select technician first!");
+  if (loading) return <Loader />;
 
-    alert(
-      `Assigned ${tech} for ${services[serviceIdx].name} on ${services[serviceIdx].scheduleDates[dateIdx]}`
-    );
-  };
+  if (!subscription) return <p className="text-center py-10">Subscription not found</p>;
 
-  // ----------------------------------------------------------
-  // UI
-  // ----------------------------------------------------------
   return (
-    <ContentLayout title={`Edit Subscription #${id}`}>
-      {services.map((service, serviceIdx) => {
-        const techList = mockTechnicians.filter(
-          (t) => t.role === service.role
-        );
+    <ContentLayout title={`Edit Subscription #${subscription.id}`}>
+      <div className="space-y-8">
+        {subscription.visits.map((serviceBlock, serviceIdx) => {
+          const serviceName = serviceBlock.service_name || "Unknown Service";
 
-        return (
-          <Card key={serviceIdx} className="mb-6 shadow-md border">
-            <CardHeader>
-              <CardTitle className="text-lg text-red-600">
-                {service.name}
-              </CardTitle>
-            </CardHeader>
+          return (
+            <Card key={`service-${serviceIdx}`} className="shadow-lg border">
+              <CardHeader className="bg-gradient-to-r from-indigo-50 to-purple-50">
+                <CardTitle className="text-xl text-indigo-800">
+                  {serviceName}
+                  <Badge variant="secondary" className="ml-3">
+                    {serviceBlock.scheduled_visits.length} visit{serviceBlock.scheduled_visits.length > 1 ? "s" : ""}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
 
-            <CardContent>
-              <table className="w-full border-t">
-                <thead>
-                  <tr className="text-left text-red-600 text-sm border-b">
-                    <th className="py-2">Service Name</th>
-                    <th className="py-2">Schedule Date</th>
-                    <th className="py-2">Status</th>
-                    <th className="py-2">Technician</th>
-                    <th className="py-2 text-center">Action</th>
-                  </tr>
-                </thead>
+              <CardContent className="p-0">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b">
+                    <tr>
+                      <th className="text-left py-4 px-6 font-medium text-gray-700">Visit #</th>
+                      <th className="text-left py-4 px-6 font-medium text-gray-700">Scheduled Date</th>
+                      <th className="text-center py-4 px-6 font-medium text-gray-700">Status</th>
+                      <th className="text-left py-4 px-6 font-medium text-gray-700">Technician</th>
+                      <th className="text-center py-4 px-6 font-medium text-gray-700">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {serviceBlock.scheduled_visits.map((visit) => {
+                      const isCompleted = visit.status === "completed";
+                      const visitPending = pendingChanges[visit.id] || {};
+                      const displayedTechId = visitPending.technicianId || visit.technician_id;
+                      const currentTech = technicians.find(t => t.id === displayedTechId);
+                      const hasPendingTechnician = !!visitPending.technicianId;
 
-                <tbody>
-                  {service.scheduleDates.map((date, dateIdx) => {
-                    const formattedForInput = date.split("-").reverse().join("-");
+                      return (
+                        <tr key={visit.id} className="border-b hover:bg-gray-50">
+                          <td className="py-4 px-6 font-medium">Visit {visit.visit_number}</td>
 
-                    return (
-                      <tr key={dateIdx} className="border-b">
-                        {/* Service Name */}
-                        <td className="py-2 text-sm">{service.name}</td>
+                          <td className="py-4 px-6">
+                            <input
+                              type="date"
+                              className="border rounded px-3 py-2 w-full"
+                              defaultValue={visitPending.scheduledDate || visit.scheduled_date}
+                              disabled={isCompleted}
+                              onBlur={(e) => {
+                                const value = e.target.value;
+                                if (value && value !== visit.scheduled_date && !isCompleted) {
+                                  updatePendingDate(visit.id, value);
+                                }
+                              }}
+                            />
+                          </td>
 
-                        {/* Editable Date */}
-                        <td className="py-2 text-sm">
-                          <input
-                            type="date"
-                            className="border px-2 py-1 rounded w-[150px]"
-                            value={formattedForInput}
-                            onChange={(e) =>
-                              updateDate(
-                                serviceIdx,
-                                dateIdx,
-                                e.target.value.split("-").reverse().join("-")
-                              )
-                            }
-                          />
-                        </td>
+                          <td className="py-4 px-6 text-center">
+                            {isCompleted ? (
+                              <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto" />
+                            ) : visit.status === "in_progress" ? (
+                              <Clock className="w-8 h-8 text-orange-600 mx-auto" />
+                            ) : (
+                              <XCircle className="w-8 h-8 text-red-500 mx-auto" />
+                            )}
+                          </td>
 
-                        {/* Status */}
-                        <td className="py-2 text-center text-xl cursor-pointer">
-                          <button
-                            onClick={() => toggleStatus(serviceIdx, dateIdx)}
-                            className={service.status[dateIdx]
-                              ? "text-green-600"
-                              : "text-red-500"}
-                          >
-                            {service.status[dateIdx] ? "✓" : "✕"}
-                          </button>
-                        </td>
+                          <td className="py-4 px-6">
+                            <Select
+                              value={displayedTechId || undefined}
+                              onValueChange={(techId) => updatePendingTechnician(visit.id, techId)}
+                              disabled={saving !== null || isCompleted}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select Technician" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {technicians.length > 0 ? (
+                                  technicians.map((tech) => (
+                                    <SelectItem key={tech.id} value={tech.id}>
+                                      {tech.fullname || "Unnamed"} ({tech.service_type || "No Service"})
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <div className="px-4 py-2 text-sm text-gray-500">
+                                    No technicians available
+                                  </div>
+                                )}
+                              </SelectContent>
+                            </Select>
 
-                        {/* Technician Dropdown */}
-                        <td className="py-2 w-[250px]">
-                          <Select
-                            value={service.technician || ""}
-                            onValueChange={(v) =>
-                              handleSelectTech(serviceIdx, v)
-                            }
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select Technician" />
-                            </SelectTrigger>
+                            {currentTech && (
+                              <p className={`text-sm mt-2 ${hasPendingTechnician ? "text-blue-700" : "text-green-700"}`}>
+                                {hasPendingTechnician ? "Pending:" : "Assigned:"} {currentTech.fullname}
+                              </p>
+                            )}
+                          </td>
 
-                            <SelectContent>
-                              {techList.length > 0 ? (
-                                techList.map((tech) => (
-                                  <SelectItem
-                                    key={tech.id}
-                                    value={tech.name}
-                                  >
-                                    {tech.name}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem disabled value="none">
-                                  No technicians for this service
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </td>
-
-                        {/* Assign button */}
-                        <td className="py-2 text-center">
-                          <Button
-                            size="sm"
-                            onClick={() => handleAssign(serviceIdx, dateIdx)}
-                            className="bg-red-600 text-white"
-                          >
-                            Assign
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        );
-      })}
+                          <td className="py-4 px-6 text-center">
+                            <Button
+                              size="sm"
+                              onClick={() => assignTechnician(visit.id)}
+                              disabled={saving === visit.id || isCompleted || !hasPendingTechnician}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              {saving === visit.id ? "Assigning..." : "Assign"}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </ContentLayout>
   );
 }
