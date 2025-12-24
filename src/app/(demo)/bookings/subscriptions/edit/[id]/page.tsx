@@ -50,12 +50,12 @@ export default function EditSubscriptionPage() {
     scheduledDate?: string;
   }>>({});
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
       try {
         setLoading(true);
 
         const subRes = await apiClient.get(`/booking/V1/get-subscription-booking-by-id/${id}`);
+        console.log(subRes,"kkkkkkkkkkkkkkkkkkkkkkkkkkkk")
         setSubscription(subRes.data.data);
 
         const techRes = await apiClient.get("/technicians/V1/get-all");
@@ -69,11 +69,13 @@ export default function EditSubscriptionPage() {
       }
     };
 
+  useEffect(() => {
     if (id) fetchData();
   }, [id]);
 
   const assignTechnician = async (visitId: string) => {
     const changes = pendingChanges[visitId];
+    console.log(changes,"fffffffffffff")
 
     if (!changes?.technicianId) {
       alert("Please select a technician first");
@@ -86,7 +88,7 @@ export default function EditSubscriptionPage() {
       const payload: any = { technician_id: changes.technicianId };
       if (changes.scheduledDate) payload.scheduled_date = changes.scheduledDate;
 
-      await apiClient.post(`/subscription/visit/${visitId}/assign`, payload);
+      await apiClient.post(`/booking/V1/subscription/visit/${visitId}/assign`, payload);
 
       // Update main subscription state
       setSubscription(prev => {
@@ -116,6 +118,7 @@ export default function EditSubscriptionPage() {
       });
 
       alert("Technician assigned successfully!");
+      fetchData();
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to assign technician");
     } finally {
