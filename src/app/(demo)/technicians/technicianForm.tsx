@@ -326,7 +326,7 @@ const TechnicianForm = ({ readOnly = false }: { readOnly?: boolean }) => {
 
               {/* Certificate */}
               <div>
-                <Label>Certificate</Label>
+                <Label>Certificate (Driving License)</Label>
                 <div className="mt-2 border-2 border-dashed rounded-xl h-48 relative bg-gray-50">
                   {getPreview(certFiles, formData.existing_certificate) ? (
                     <Image src={getPreview(certFiles, formData.existing_certificate)} alt="Cert" fill className="object-contain p-4" />

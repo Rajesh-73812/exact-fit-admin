@@ -25,7 +25,7 @@ import {
 import { Trash2, Calendar } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { usePresignedUpload } from '@/hooks/usePresignedUpload';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 const sectionOptions = ['homepage', 'about us', 'contact us', 'services'] as const;
 type BannerSection = typeof sectionOptions[number];
@@ -140,11 +140,10 @@ export default function BannerForm() {
 
     try {
       await apiClient.post('/banner/V1/upsert-banner', {
-        // Critical: Send real `id` (UUID) when editing
         id: isEdit ? formData.id : undefined,
 
         name: formData.name.trim(),
-        slug: generateSlug(formData.name), // Fresh slug from current name
+        slug: generateSlug(formData.name), 
         image_url: finalImageUrl,
         priority: formData.priority ? Number(formData.priority) : null,
         link_url: formData.link_url || null,
@@ -156,6 +155,7 @@ export default function BannerForm() {
 
       toast.success(isEdit ? 'Banner updated successfully!' : 'Banner created successfully!');
       router.push('/banners/list');
+      
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Failed to save banner');
     } finally {
@@ -236,8 +236,9 @@ export default function BannerForm() {
                 <Calendar className="w-4 h-4" /> Start Date (optional)
               </Label>
               <Input
-                type="date"  // Change to 'date' type to remove time part
+                type="date"
                 value={formData.start_date}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={e => {
                   const selectedDate = e.target.value;
                   setFormData(p => ({ ...p, start_date: selectedDate }));
@@ -250,9 +251,9 @@ export default function BannerForm() {
                 <Calendar className="w-4 h-4" /> End Date (optional)
               </Label>
               <Input
-                type="date"  // Change to 'date' type to remove time part
+                type="date"
                 value={formData.end_date}
-                min={formData.start_date || undefined}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={e => {
                   const selectedDate = e.target.value;
                   setFormData(p => ({ ...p, end_date: selectedDate }));
@@ -341,7 +342,7 @@ export default function BannerForm() {
             Cancel
           </Button>
           <Button type="submit" disabled={loading || uploading}>
-            {loading ? 'Saving...' : isEdit ? 'Update Banner' : 'Create Banner'}
+            {loading ? 'Saving...' : isEdit ? 'Update' : 'Save'}
           </Button>
         </div>
       </form>

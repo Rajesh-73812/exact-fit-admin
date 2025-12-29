@@ -26,6 +26,7 @@ import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
 import { usePresignedUpload } from "@/hooks/usePresignedUpload";
+import toast from 'react-hot-toast';
 
 interface ParentService {
     id: string;
@@ -193,8 +194,20 @@ const SubServiceForm: React.FC = () => {
                 hero_banner: finalHeroBannerUrl || null,
             };
 
-            await apiClient.post('/sub-service/V1/upsert-sub-service', payload);
-            router.push('/subservices');
+            // await apiClient.post('/sub-service/V1/upsert-sub-service', payload);
+            // router.push('/subservices');
+            toast.promise(
+                apiClient.post('/sub-service/V1/upsert-sub-service', payload),
+                {
+                    loading: 'Saving sub-service ',
+                    success: isEdit ? 'SubService updated successfully!' : 'SubService created successfully!',
+                    error: (err) => err.response?.data?.message || 'Something went wrong',
+                }
+            ).then(()=>{
+                router.push('/subservices');
+            }).catch(()=>{
+
+            })
         } catch (err: any) {
             alert(err.response?.data?.message || 'Something went wrong');
         } finally {
@@ -389,7 +402,7 @@ const SubServiceForm: React.FC = () => {
                         Cancel
                     </Button>
                     <Button type="submit" onClick={handleSubmit} disabled={isLoading || uploadingImage || uploadingHero} className="bg-black">
-                        {isLoading ? 'Saving...' : isEdit ? 'Update Sub-Service' : 'Create Sub-Service'}
+                        {isLoading ? 'Saving...' : isEdit ? 'Update' : 'Save'}
                     </Button>
                 </div>
             </div>
