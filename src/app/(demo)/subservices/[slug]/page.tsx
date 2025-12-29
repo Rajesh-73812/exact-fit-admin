@@ -91,7 +91,7 @@ export default function SubServiceDetailsPage() {
         console.error('Failed to fetch sub-service:', err);
         setError(
           err.response?.data?.message ||
-            'Failed to load sub-service data. Please try again later.'
+          'Failed to load sub-service data. Please try again later.'
         );
       } finally {
         setLoading(false);
@@ -146,11 +146,10 @@ export default function SubServiceDetailsPage() {
 
               <div className="flex flex-wrap items-center gap-3">
                 <Badge
-                  className={`text-white ${
-                    subservice.status === 'active'
+                  className={`text-white ${subservice.status === 'active'
                       ? 'bg-gradient-to-b from-[#8000FF] to-[#DE00FF]'
                       : 'bg-gray-400'
-                  }`}
+                    }`}
                 >
                   {subservice.status}
                 </Badge>
@@ -211,7 +210,11 @@ export default function SubServiceDetailsPage() {
         />
         <StatCard
           title="Image Alt"
-          value={subservice.image_alt || '—'}
+          value={
+            <p className="text-xl font-bold line-clamp-2 break-words">
+              {subservice.image_alt || '—'}
+            </p>
+          }
           icon={<Package className="h-5 w-5" />}
           trend="+0%"
         />

@@ -35,7 +35,7 @@ export default function ServiceForm() {
   const { files, uploading, uploadFiles, removeFile, getUploadedUrls } = usePresignedUpload("services");
 
   const [formData, setFormData] = useState({
-    type: 'enquiry',
+    type: '',
     title: '',
     service_slug: '',
     position: '',
@@ -185,7 +185,7 @@ export default function ServiceForm() {
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="e.g. Web Development"
+                placeholder="Enter Service Name"
                 required
               />
             </div>
@@ -200,6 +200,7 @@ export default function ServiceForm() {
               <Label><LocateIcon className="w-5 h-5 inline mr-2" /> Position</Label>
               <Input
                 type="number"
+                min={1}
                 value={formData.position}
                 onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
                 placeholder="e.g. 1"
@@ -301,7 +302,7 @@ export default function ServiceForm() {
               Cancel
             </Button>
             <Button type="submit" disabled={loading || uploading} >
-              {loading ? 'Saving...' : isEdit ? 'Update Service' : 'Create Service'}
+              {loading ? 'Saving...' : isEdit ? 'Update' : 'Save'}
             </Button>
           </div>
         </form>

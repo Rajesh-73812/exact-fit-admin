@@ -1,23 +1,25 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, } from 'recharts';
-import { Package, TrendingUp, DollarSign, Boxes, } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Package, TrendingUp, DollarSign } from 'lucide-react';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
-import { Card, CardContent, CardHeader, CardTitle, } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import apiClient from '@/lib/apiClient';
 import Loader from '@/components/utils/Loader';
 
 function StatCard({
-    title, value, icon, trend,
+    title,
+    value,
+    icon,
+    trend,
 }: {
     title: string;
-    value: string | number;
+    value: React.ReactNode;
     icon: React.ReactElement;
     trend: string;
 }) {
@@ -44,21 +46,17 @@ function StatCard({
 
 export default function ServiceDetailsPage() {
     const { slug } = useParams();
-    console.log(slug, "slug");
-    const router = useRouter()
     const [service, setService] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch category data
     useEffect(() => {
         if (!slug) return;
-        setLoading(true)
+        setLoading(true);
         const fetchService = async () => {
             try {
                 const res = await apiClient.get(`/service/V1/get-service-by-slug/${slug}`);
-                console.log(res.data, "response");
-                setService(res.data.data);  // Access the first item in the data array
+                setService(res.data.data);
             } catch (error) {
                 console.error('Failed to fetch service:', error);
                 setError('Failed to load service data. Please try again later.');
@@ -68,10 +66,9 @@ export default function ServiceDetailsPage() {
         };
 
         fetchService();
-
     }, [slug]);
 
-    // Placeholder sales data (since not provided in backend)
+    // Placeholder sales data
     const salesData = [
         { month: 'Jan', sales: 4000 },
         { month: 'Feb', sales: 3000 },
@@ -80,19 +77,13 @@ export default function ServiceDetailsPage() {
         { month: 'May', sales: 6000 },
     ];
 
-    // Calculate total stock for a product
-    const calculateTotalStock = (stock: any[]) => {
-        return stock.reduce((total, item) => total + item.quantity, 0);
-    };
-
-    if (loading) return <p>Loading...</p>;
+    if (loading) return <Loader />;
     if (error) return <p className="text-red-500">{error}</p>;
-    if (!service) return <p>service not found.</p>;
+    if (!service) return <p>Service not found.</p>;
 
     return (
-        <ContentLayout title={service.name}>
-            {/* service Overview */}
-            {loading && <Loader />}
+        <ContentLayout title={service.title || service.name}>
+            {/* Service Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <Card className="md:col-span-2 shadow-lg">
                     <CardHeader>
@@ -103,7 +94,7 @@ export default function ServiceDetailsPage() {
                             {service.image_url ? (
                                 <Image
                                     src={service.image_url}
-                                    alt={service.image_alt || service.title || 'service image'}
+                                    alt={service.image_alt || service.title}
                                     fill
                                     className="object-cover"
                                     unoptimized
@@ -115,11 +106,14 @@ export default function ServiceDetailsPage() {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <h3 className="text-xl font-semibold">{service.name}</h3>
+                            <h3 className="text-xl font-semibold">{service.title}</h3>
                             <p className="text-muted-foreground">{service.description}</p>
                             <div className="flex items-center gap-2">
                                 <Badge
-                                    className={`text-white ${service.status === 'active' ? 'bg-gradient-to-b from-[#8000FF] to-[#DE00FF]' : 'bg-gray-300'}`}
+                                    className={`text-white ${service.status === 'active'
+                                        ? 'bg-gradient-to-b from-[#8000FF] to-[#DE00FF]'
+                                        : 'bg-gray-300'
+                                        }`}
                                 >
                                     {service.status}
                                 </Badge>
@@ -131,40 +125,56 @@ export default function ServiceDetailsPage() {
                     </CardContent>
                 </Card>
 
-                {/* service Count */}
+                {/* Subservices Count with Circular Progress */}
                 <Card className="shadow-lg">
                     <CardHeader>
-                        <CardTitle>Subcategories</CardTitle>
+                        <CardTitle>Total Subservices</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center justify-center">
-                            <div className="relative h-32 w-32">
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className="text-2xl font-bold">{service.subserviceCount}</span>
-                                </div>
-                                <svg className="w-full h-full" viewBox="0 0 36 36">
-                                    <path
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        fill="none"
-                                        stroke="#eee"
-                                        strokeWidth="3"
-                                    />
-                                    <path
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        fill="none"
-                                        stroke="url(#subserviceGradient)"
-                                        strokeWidth="3"
-                                        strokeDasharray={`${(service.subserviceCount / 100) * 100}, 100`} // Assuming 100 as max for scaling
-                                    />
-                                    <defs>
-                                        <linearGradient id="subcategoryGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                            <stop offset="0%" stopColor="#8000FF" />
-                                            <stop offset="100%" stopColor="#DE00FF" />
-                                        </linearGradient>
-                                    </defs>
-                                </svg>
+                        <div className="flex flex-col items-center justify-center h-40 relative">
+                            <svg className="w-40 h-40 transform -rotate-90">
+                                {/* Background Circle */}
+                                <circle
+                                    cx="80"
+                                    cy="80"
+                                    r="70"
+                                    stroke="#e5e7eb"
+                                    strokeWidth="12"
+                                    fill="none"
+                                />
+                                {/* Progress Circle */}
+                                <circle
+                                    cx="80"
+                                    cy="80"
+                                    r="70"
+                                    stroke="url(#progressGradient)"
+                                    strokeWidth="12"
+                                    fill="none"
+                                    strokeDasharray={`${2 * Math.PI * 70}`}
+                                    strokeDashoffset={`${2 * Math.PI * 70 * (1 - (service.sub_services?.length || 0) / 10)}`}
+                                    strokeLinecap="round"
+                                    className="transition-all duration-700 ease-out"
+                                />
+                                {/* Gradient Definition */}
+                                <defs>
+                                    <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#8000FF" />
+                                        <stop offset="100%" stopColor="#DE00FF" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+
+                            {/* Count in Center */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-5xl font-bold text-[#8000FF]">
+                                    {service.sub_services?.length || 0}
+                                </span>
+                                {/* <span className="text-sm text-muted-foreground mt-1">of 10</span> */}
                             </div>
                         </div>
+                        <p className="text-center text-sm text-muted-foreground mt-4">
+                            Active Subservices
+                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -172,32 +182,26 @@ export default function ServiceDetailsPage() {
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <StatCard
-                    title="Total Products"
-                    value={service.productCount}
+                    title="Total Subservices"
+                    value={service.sub_services?.length || 0}
                     icon={<Package className="h-5 w-5" />}
-                    trend="+5%"
+                    trend="+12%"
                 />
                 <StatCard
                     title="Total Sales"
-                    value="$0" // Placeholder since not provided
+                    value="$0"
                     icon={<DollarSign className="h-5 w-5" />}
                     trend="+0%"
                 />
                 <StatCard
                     title="Monthly Growth"
-                    value="0%" // Placeholder since not provided
+                    value="0%"
                     icon={<TrendingUp className="h-5 w-5" />}
                     trend="+0%"
                 />
-                {/* <StatCard
-                    title="Active Subcategories"
-                    value={category.subcategories.filter((sub: any) => sub.status === 'active').length}
-                    icon={<Boxes className="h-5 w-5" />}
-                    trend="+2%"
-                /> */}
             </div>
 
-            {/* Sales Chart */}
+            {/* Sales Chart (Placeholder) */}
             <Card className="mb-6 shadow-lg">
                 <CardHeader>
                     <CardTitle>Sales Performance (Placeholder)</CardTitle>
@@ -217,22 +221,48 @@ export default function ServiceDetailsPage() {
                 </CardContent>
             </Card>
 
-            {/* Products Table */}
+            {/* Subservices Table */}
             <Card className="shadow-lg">
                 <CardHeader>
-                    <CardTitle>Sub Services in Service</CardTitle>
+                    <CardTitle>Subservices</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Product Name</TableHead>
+                                <TableHead>Subservice Name</TableHead>
                                 <TableHead>Price</TableHead>
-                                <TableHead>Stock</TableHead>
+                                <TableHead>Discount</TableHead>
                                 <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
+                        <TableBody>
+                            {service.sub_services?.length > 0 ? (
+                                service.sub_services.map((sub: any) => (
+                                    <TableRow key={sub.id}>
+                                        <TableCell className="font-medium">{sub.title}</TableCell>
+                                        <TableCell>₹{sub.price}</TableCell>
+                                        <TableCell>{sub.discount ? `${sub.discount}%` : '—'}</TableCell>
+                                        <TableCell>
+                                            <Badge
+                                                className={`text-white ${sub.status === 'active'
+                                                    ? 'bg-gradient-to-b from-[#8000FF] to-[#DE00FF]'
+                                                    : 'bg-gray-300'
+                                                    }`}
+                                            >
+                                                {sub.status}
+                                            </Badge>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                        No subservices found.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
                     </Table>
                 </CardContent>
             </Card>
