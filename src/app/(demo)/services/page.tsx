@@ -16,6 +16,8 @@ import CustomModal from '@/components/CustomModal';
 import apiClient from '@/lib/apiClient';
 import { ContentLayout } from '@/components/admin-panel/content-layout';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import Link from 'next/link';
 
 interface Service {
   title: string;
@@ -185,8 +187,18 @@ export default function ServicesPage() {
 
   return (
     <ContentLayout title="Services">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem><Link href="/dashboard">Dashboard</Link></BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem><Link href="/services">Services</Link></BreadcrumbItem>
+          {/* <BreadcrumbSeparator /> */}
+          {/* <BreadcrumbItem><BreadcrumbPage>{isEdit ? 'Edit' : 'Create'}</BreadcrumbPage></BreadcrumbItem> */}
+        </BreadcrumbList>
+      </Breadcrumb>
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className='mt-8 max-w-6xl mx-auto'>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {/* Total Sub Services */}
         <div className="relative rounded-lg bg-white shadow hover:shadow-lg transition p-3 border border-gray-200">
           <div className="absolute top-0 left-0 w-1 h-full bg-[#E31E24] rounded" />
@@ -248,6 +260,7 @@ export default function ServicesPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
 
       {/* List */}

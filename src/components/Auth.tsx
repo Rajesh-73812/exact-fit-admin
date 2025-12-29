@@ -42,6 +42,12 @@ export const AuthPage = () => {
 
       console.log(response.data.data?.token,"from token")
       localStorage.setItem("token", response.data.data?.token);
+      localStorage.setItem(
+  "permissions",
+  JSON.stringify(response.data.data.permissions || [])
+  
+);
+localStorage.setItem("role", response.data.data.role);
       console.log("Token stored:", localStorage.getItem("token"));
       router.push("/dashboard");
     } catch (err: any) {

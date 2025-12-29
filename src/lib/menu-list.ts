@@ -1,16 +1,27 @@
-import { Tag, Users, Settings, Bookmark, SquarePen, LayoutGrid, LucideIcon, BookmarkMinus, Box, Image,UserCog, IndianRupee, Bell, Contact, Ticket, House  } from "lucide-react";
+import {
+  Users,
+  Settings,
+  Bookmark,
+  LayoutGrid,
+  LucideIcon,
+  BookmarkMinus,
+  Image,
+  UserCog,
+  IndianRupee,
+  House,
+} from 'lucide-react';
 
 type Submenu = {
   href: string;
   label: string;
-  active?: boolean;
+  permission?: string;
 };
 
 type Menu = {
   href: string;
   label: string;
-  active?: boolean;
   icon: LucideIcon;
+  permission?: string;
   submenus?: Submenu[];
 };
 
@@ -19,161 +30,50 @@ type Group = {
   menus: Menu[];
 };
 
-export function getMenuList(pathname: string): Group[] {
+export function getMenuList(
+  permissions: string[],
+  role: string
+): Group[] {
+  const isSuperAdmin = role === 'superadmin';
+
+  const has = (p?: string) =>
+    isSuperAdmin || !p || permissions.includes(p);
+
   return [
     {
-      groupLabel: "",
+      groupLabel: '',
       menus: [
         {
-          href: "/dashboard",
-          label: "Dashboard",
+          href: '/dashboard',
+          label: 'Dashboard',
           icon: LayoutGrid,
-          submenus: []
-        }
-      ]
+          permission: 'dashboard:view',
+        },
+      ].filter(m => has(m.permission)),
     },
     {
-      groupLabel: "Catlog",
+      groupLabel: 'Catalog',
       menus: [
-        {
-          href: "/services",
-          label: "Services",
-          icon: Bookmark
-        },
-        {
-
-          href: "/subservices",
-          label: "Sub Services",
-          icon: BookmarkMinus
-        },
-        {
-          href: "/banners/list",
-          label: "Banners",
-          icon: Image
-        },   
-        {
-          href: "/technicians",
-          label: "Technicians",
-          icon: UserCog
-        },  
-        {
-          href: "/customers",
-          label: "Customers",
-          icon: Users
-        }   
-      ]
+        { href: '/services', label: 'Services', icon: Bookmark, permission: 'services:view' },
+        { href: '/subservices', label: 'Sub Services', icon: BookmarkMinus, permission: 'subservices:view' },
+        { href: '/banners/list', label: 'Banners', icon: Image, permission: 'banners:view' },
+        { href: '/technicians', label: 'Technicians', icon: UserCog, permission: 'technicians:view' },
+        { href: '/customers', label: 'Customers', icon: Users, permission: 'customers:view' },
+      ].filter(m => has(m.permission)),
     },
     {
-      groupLabel: "Business",
+      groupLabel: 'Business',
       menus: [
-        {
-          href: "/plans",
-          label: "Plans",
-          icon: IndianRupee
-        },
-        {
-          href: "/property",
-          label: "Property",
-          icon: House
-        }
-      ]
+        { href: '/plans', label: 'Plans', icon: IndianRupee, permission: 'plans:view' },
+        { href: '/property', label: 'Property', icon: House, permission: 'property:view' },
+      ].filter(m => has(m.permission)),
     },
     {
-      groupLabel:"Bookings",
-      menus:[
-        {
-          href:"",
-          label:"Bookings",
-          icon:SquarePen,
-          submenus:[
-            {
-              href:"/bookings/subscriptions",
-              label:"Subscription"
-            },
-            {
-              href:"/bookings/emergency",
-              label:"Emergency",
-            },
-            {
-              href:"/bookings/enquiry",
-              label:"Enquiry"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      groupLabel: "Reports",
+      groupLabel: 'Settings',
       menus: [
-        {
-          href: "",
-          label: "Reports",
-          icon: SquarePen,
-          submenus: [
-            {
-              href: "/posts",
-              label: "Sales Reports"
-            },
-            {
-              href: "/posts/new",
-              label: "Payment Reports"
-            },
-            {
-              href: "/reports/customers",
-              label: "User Reports"
-            },
-            {
-              href: "/reports/technicians",
-              label: "Technicain Reports"
-            },
-            {
-              href: "/posts/new",
-              label: "Booking Reports"
-            }
-          ]
-        },
-        {
-          href: "/enquiry",
-          label: "Enquiry",
-          icon: Tag
-        }
-      ]
+        { href: '/admin', label: 'Admin', icon: Users, permission: 'admin:view' },
+        { href: '/account', label: 'Account', icon: Settings, permission: 'account:view' },
+      ].filter(m => has(m.permission)),
     },
-    {
-      groupLabel: "Support",
-      menus: [
-
-        {
-          href: "/notifications",
-          label: "Notifications",
-          icon: Bell
-        },
-        {
-          href: "/contactus",
-          label: "Contact Us",
-          icon: Contact
-        },
-        {
-          href: "/tickets",
-          label: "Support & Ticket",
-          icon: Ticket
-        }
-      ]
-    },
-    {
-      groupLabel: "Settings",
-      menus: [
-        {
-          href: "/admin",
-          label: "Admin",
-          icon: Users
-        },
-        {
-          href: "/account",
-          label: "Account",
-          icon: Settings
-        }
-      ]
-    }
   ];
 }
