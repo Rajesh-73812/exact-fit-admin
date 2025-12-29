@@ -16,6 +16,7 @@ import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
 import { usePresignedUpload } from "@/hooks/usePresignedUpload";
 import { Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const generateSlug = (title: string): string => {
   return title
@@ -96,11 +97,6 @@ export default function ServiceForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) {
-      alert('Title is required');
-      return;
-    }
-
     if (uploading) {
       alert('Please wait for image to finish uploading');
       return;
@@ -130,8 +126,20 @@ export default function ServiceForm() {
         external_link: '',
       };
 
-      await apiClient.post('/service/V1/upsert-service', payload);
-      router.push('/services');
+      // await apiClient.post('/service/V1/upsert-service', payload);
+
+      // router.push('/services');
+      toast.promise(
+        apiClient.post('/service/V1/upsert-service', payload),
+        {
+          loading: 'Saving service...',
+          success: isEdit ? 'Service updated successfully!' : 'Service created successfully!',
+          error: (err) => err.response?.data?.message || 'Something went wrong',
+        }
+      ).then(() => {
+        router.push('/services');
+      }).catch(() => {
+      });
     } catch (err: any) {
       alert(err.response?.data?.message || 'Something went wrong');
     } finally {
