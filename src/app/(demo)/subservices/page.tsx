@@ -168,7 +168,7 @@ export default function SubServicesPage() {
       key: 'description',
       header: 'Description',
       render: (item: SubService) => (
-        <p className="text-sm text-gray-600 truncate max-w-xs">{item.description}</p>
+        <p className="text-sm text-gray-600 line-clamp-2">{item.description}</p>
       ),
     },
     {

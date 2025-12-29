@@ -16,6 +16,7 @@ import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
 import { usePresignedUpload } from "@/hooks/usePresignedUpload";
 import { Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const generateSlug = (title: string): string => {
   return title
@@ -35,7 +36,7 @@ export default function ServiceForm() {
   const { files, uploading, uploadFiles, removeFile, getUploadedUrls } = usePresignedUpload("services");
 
   const [formData, setFormData] = useState({
-    type: 'enquiry',
+    type: '',
     title: '',
     service_slug: '',
     position: '',
@@ -96,11 +97,6 @@ export default function ServiceForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim()) {
-      alert('Title is required');
-      return;
-    }
-
     if (uploading) {
       alert('Please wait for image to finish uploading');
       return;
@@ -130,8 +126,20 @@ export default function ServiceForm() {
         external_link: '',
       };
 
-      await apiClient.post('/service/V1/upsert-service', payload);
-      router.push('/services');
+      // await apiClient.post('/service/V1/upsert-service', payload);
+
+      // router.push('/services');
+      toast.promise(
+        apiClient.post('/service/V1/upsert-service', payload),
+        {
+          loading: 'Saving service...',
+          success: isEdit ? 'Service updated successfully!' : 'Service created successfully!',
+          error: (err) => err.response?.data?.message || 'Something went wrong',
+        }
+      ).then(() => {
+        router.push('/services');
+      }).catch(() => {
+      });
     } catch (err: any) {
       alert(err.response?.data?.message || 'Something went wrong');
     } finally {
@@ -185,7 +193,7 @@ export default function ServiceForm() {
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="e.g. Web Development"
+                placeholder="Enter Service Name"
                 required
               />
             </div>
@@ -200,6 +208,7 @@ export default function ServiceForm() {
               <Label><LocateIcon className="w-5 h-5 inline mr-2" /> Position</Label>
               <Input
                 type="number"
+                min={1}
                 value={formData.position}
                 onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
                 placeholder="e.g. 1"
@@ -301,7 +310,7 @@ export default function ServiceForm() {
               Cancel
             </Button>
             <Button type="submit" disabled={loading || uploading} >
-              {loading ? 'Saving...' : isEdit ? 'Update Service' : 'Create Service'}
+              {loading ? 'Saving...' : isEdit ? 'Update' : 'Save'}
             </Button>
           </div>
         </form>
