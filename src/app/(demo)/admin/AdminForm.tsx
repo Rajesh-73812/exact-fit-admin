@@ -13,14 +13,17 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import apiClient from '@/lib/apiClient';
 import { Eye, EyeOff } from 'lucide-react';
 import { usePresignedUpload } from '@/hooks/usePresignedUpload';
 
-/* ---------------- PERMISSIONS CONFIG ---------------- */
+interface AdminFormProps {
+  id?: string; // For edit/view; omit for create
+  readOnly?: boolean; // For view mode
+}
 
 const PERMISSION_GROUPS = [
   { label: 'Dashboard', key: 'dashboard', actions: ['view'] },
@@ -33,7 +36,7 @@ const PERMISSION_GROUPS = [
   { label: 'Admins', key: 'admin', actions: ['view', 'create', 'edit', 'delete'] },
 ];
 
-export default function CreateAdminPage() {
+export default function AdminForm({ id, readOnly = false }: AdminFormProps) {
   const router = useRouter();
   const { uploadFiles } = usePresignedUpload('admin-profile', false);
 
@@ -43,15 +46,43 @@ export default function CreateAdminPage() {
     mobile: '',
     password: '',
     confirmPassword: '',
-    roleName: '',
+    role_name: '',
     profile_pic: '',
   });
-
   const [permissions, setPermissions] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [initialData, setInitialData] = useState<any>(null);
+
+  // Fetch existing data for edit/view
+  useEffect(() => {
+    if (id) { // Fetch for both edit and view
+      const fetchAdmin = async () => {
+        try {
+          const res = await apiClient.get(`/auth/V1/get-admin/${id}`);
+          const data = res.data.data;
+          setForm({
+            fullname: data.fullname || '',
+            email: data.email || '',
+            mobile: data.mobile || '',
+            password: '', // Don't prefill
+            confirmPassword: '',
+            role_name: data.role_name || '',
+            profile_pic: data.profile_pic || '',
+          });
+          setImagePreview(data.profile_pic || null);
+          // Extract permissions from main response (no separate API)
+          setPermissions(data.permissions || []);
+          setInitialData(data);
+        } catch (err) {
+          console.error('Fetch error:', err);
+        }
+      };
+      fetchAdmin();
+    }
+  }, [id, readOnly]);
 
   const togglePermission = (perm: string) => {
     setPermissions((prev) =>
@@ -73,22 +104,28 @@ export default function CreateAdminPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.roleName.trim()) return;
-    if (form.password !== form.confirmPassword) return;
+    if (!form.role_name.trim()) return;
+    if (form.password !== form.confirmPassword && form.password) return;
 
     setLoading(true);
 
     try {
-      await apiClient.post('/auth/V1/register', {
+      const payload = {
         fullname: form.fullname,
         email: form.email,
         mobile: form.mobile,
-        password: form.password,
-        role: 'admin',               // 🔒 enum stays admin
-        role_name: form.roleName,    // 👈 custom role label
-        permissions,                 // 👈 actual power
+        ...(form.password && { password: form.password }), // Only send if editing/changing
+        role: 'staff',
+        role_name: form.role_name,
+        permissions,
         profile_pic: form.profile_pic,
-      });
+      };
+
+      if (id) {
+        await apiClient.put(`/auth/V1/update-admin/${id}`, payload);
+      } else {
+        await apiClient.post('/auth/V1/register', payload);
+      }
 
       router.push('/admin/list');
     } finally {
@@ -96,8 +133,10 @@ export default function CreateAdminPage() {
     }
   };
 
+  const title = id ? (readOnly ? 'View Admin' : 'Edit Admin') : 'Create Admin';
+
   return (
-    <ContentLayout title="Create Admin">
+    <ContentLayout title={title}>
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -107,7 +146,7 @@ export default function CreateAdminPage() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Create Admin</BreadcrumbPage>
+            <BreadcrumbPage>{title}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -116,51 +155,68 @@ export default function CreateAdminPage() {
         {/* LEFT */}
         <div className="space-y-4">
           <Label>Full Name</Label>
-          <Input value={form.fullname} onChange={(e) => setForm({ ...form, fullname: e.target.value })} />
+          <Input 
+            value={form.fullname} 
+            onChange={(e) => setForm({ ...form, fullname: e.target.value })} 
+            disabled={readOnly}
+          />
 
           <Label>Email</Label>
-          <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Input 
+            value={form.email} 
+            onChange={(e) => setForm({ ...form, email: e.target.value })} 
+            disabled={readOnly}
+          />
 
           <Label>Mobile</Label>
-          <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
+          <Input 
+            value={form.mobile} 
+            onChange={(e) => setForm({ ...form, mobile: e.target.value })} 
+            disabled={readOnly}
+          />
 
-          <Label>Password</Label>
-          <div className="relative">
-            <Input
-              type={showPassword ? 'text' : 'password'}
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-            />
-            <button type="button" className="absolute right-2 top-2" onClick={() => setShowPassword(!showPassword)}>
-              {showPassword ? <EyeOff /> : <Eye />}
-            </button>
-          </div>
+          {!readOnly && (
+            <>
+              <Label>Password</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                />
+                <button type="button" className="absolute right-2 top-2" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <EyeOff /> : <Eye />}
+                </button>
+              </div>
 
-          <Label>Confirm Password</Label>
-          <div className="relative">
-            <Input
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={form.confirmPassword}
-              onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-            />
-            <button type="button" className="absolute right-2 top-2" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
-              {showConfirmPassword ? <EyeOff /> : <Eye />}
-            </button>
-          </div>
+              <Label>Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                />
+                <button type="button" className="absolute right-2 top-2" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  {showConfirmPassword ? <EyeOff /> : <Eye />}
+                </button>
+              </div>
+            </>
+          )}
 
-          <Label>Role Name (Custom)</Label>
+          <Label>Role Name</Label>
           <Input
-            placeholder="e.g. Manager / Support / Operator"
-            value={form.roleName}
-            onChange={(e) => setForm({ ...form, roleName: e.target.value })}
+            placeholder="Manager / Support / Operator"
+            value={form.role_name}
+            onChange={(e) => setForm({ ...form, role_name: e.target.value })}
+            disabled={readOnly}
           />
 
           <Label>Profile Image</Label>
-          <input type="file" onChange={handleImageChange} />
+          {!readOnly && <input type="file" onChange={handleImageChange} />}
           {imagePreview && <Image src={imagePreview} alt="preview" width={120} height={120} />}
         </div>
 
-        {/* RIGHT — PERMISSIONS */}
+        {/* RIGHT */}
         <div className="space-y-4">
           <h3 className="font-semibold">Permissions</h3>
 
@@ -172,11 +228,13 @@ export default function CreateAdminPage() {
                   const perm = `${group.key}:${action}`;
                   return (
                     <label key={perm} className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={permissions.includes(perm)}
-                        onChange={() => togglePermission(perm)}
-                      />
+                      {!readOnly && (
+                        <input
+                          type="checkbox"
+                          checked={permissions.includes(perm)}
+                          onChange={() => togglePermission(perm)}
+                        />
+                      )}
                       {action.toUpperCase()}
                     </label>
                   );
@@ -187,9 +245,11 @@ export default function CreateAdminPage() {
         </div>
 
         <div className="col-span-2 flex justify-end gap-4">
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Admin'}
-          </Button>
+          {!readOnly && (
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : (id ? 'Update Admin' : 'Create Admin')}
+            </Button>
+          )}
           <Button variant="outline" onClick={() => router.push('/admin/list')}>
             Cancel
           </Button>

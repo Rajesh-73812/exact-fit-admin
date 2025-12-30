@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import AdminForm from '../../AdminForm';
 
-export default function EditSubCategoryPage() {
+export default function EditAdminPage() {
   const params = useParams();
   const id = params?.id as string;
 
