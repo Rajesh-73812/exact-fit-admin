@@ -42,6 +42,7 @@ export const AuthPage = () => {
 
       console.log(response.data.data?.token,"from token")
       localStorage.setItem("token", response.data.data?.token);
+      localStorage.setItem("role_name", response.data.data.role_name || "");
       localStorage.setItem(
   "permissions",
   JSON.stringify(response.data.data.permissions || [])
