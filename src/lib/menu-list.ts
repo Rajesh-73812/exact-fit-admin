@@ -69,6 +69,14 @@ export function getMenuList(
       ].filter(m => has(m.permission)),
     },
     {
+      groupLabel: 'Bookings',
+      menus: [
+        { href: '/bookings/subscriptions', label: 'Subscriptions', icon: IndianRupee, permission: 'booking:view' },
+        { href: '/bookings/enquiry', label: 'Enquiry', icon: House, permission: 'booking:view' },
+        { href: '/bookings/emergency', label: 'Emergency', icon: House, permission: 'booking:view' },
+      ].filter(m => has(m.permission)),
+    },
+    {
       groupLabel: 'Settings',
       menus: [
         { href: '/admin', label: 'Admin', icon: Users, permission: 'admin:view' },
